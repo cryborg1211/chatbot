@@ -1,0 +1,194 @@
+@page
+@{
+    ViewData["Title"] = "Nhật ký hệ thống";
+    ViewData["ActiveNav"] = "Logs";
+}
+
+<!-- Page Header -->
+<div class="flex items-start justify-between mb-6">
+    <div>
+        <div class="flex items-center gap-2 mb-1">
+            <i class="fa-solid fa-terminal text-gray-400"></i>
+            <h1 class="text-2xl font-bold text-gray-800">Nhật ký hệ thống</h1>
+        </div>
+        <p class="text-sm text-gray-500">Theo dõi và giám sát mọi hoạt động của người dùng trên nền tảng Chính phủ AI.</p>
+    </div>
+    <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600">
+            <i class="fa-regular fa-calendar text-gray-400"></i>
+            <span>20/05/2024</span>
+        </div>
+        <button class="flex items-center gap-2 px-4 py-2.5 bg-gray-800 hover:bg-gray-900 text-white rounded-lg text-sm font-medium transition shadow-sm">
+            <i class="fa-solid fa-download text-xs"></i>
+            Tải báo cáo (Excel/CSV)
+        </button>
+    </div>
+</div>
+
+<!-- Search & Filter Bar -->
+<div class="flex items-center gap-3 mb-6">
+    <div class="relative flex-1">
+        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+        <input type="text" placeholder="Tìm kiếm theo tài nguyên, IP hoặc tên người dùng..."
+               class="w-full h-10 pl-10 pr-4 bg-white border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition" />
+    </div>
+    <button class="flex items-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition">
+        <i class="fa-solid fa-filter text-xs"></i>
+        Lọc hành động
+    </button>
+    <button class="p-2.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition">
+        <i class="fa-solid fa-ellipsis-vertical"></i>
+    </button>
+</div>
+
+<!-- Activity Log Table -->
+<div class="bg-white rounded-lg border border-gray-200">
+    <!-- Section Header -->
+    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+        <div>
+            <h2 class="text-base font-bold text-gray-800">Hoạt động hệ thống</h2>
+            <p class="text-sm text-gray-500 mt-0.5">Danh sách các sự kiện xảy ra trong 24 giờ qua.</p>
+        </div>
+        <span class="text-xs text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full font-medium border border-blue-100">
+            Đang hiển thị 5 bản ghi
+        </span>
+    </div>
+
+    <table class="w-full">
+        <thead>
+            <tr class="border-b border-gray-100 bg-gray-50/50">
+                <th class="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3 w-44">Thời gian</th>
+                <th class="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3 w-52">Người dùng</th>
+                <th class="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3 w-36">Hành động</th>
+                <th class="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">Tài nguyên</th>
+                <th class="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3 w-36">Địa chỉ IP</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+            <!-- Row 1: Chat -->
+            <tr class="hover:bg-gray-50/50 transition">
+                <td class="px-6 py-4 text-sm text-gray-600 font-mono">2024-05-20 14:30</td>
+                <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                            <i class="fa-solid fa-user text-blue-600 text-[10px]"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-800">Nguyễn Văn An</p>
+                            <p class="text-xs text-gray-400">Chuyên viên</p>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-6 py-4">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium">
+                        <i class="fa-regular fa-comment text-[10px]"></i> Trò chuyện
+                    </span>
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-600">Phiên tư vấn pháp lý #128</td>
+                <td class="px-6 py-4 text-sm text-gray-500 font-mono">192.168.1.45</td>
+            </tr>
+            <!-- Row 2: Upload -->
+            <tr class="hover:bg-gray-50/50 transition">
+                <td class="px-6 py-4 text-sm text-gray-600 font-mono">2024-05-20 13:15</td>
+                <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                            <i class="fa-solid fa-user text-green-600 text-[10px]"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-800">Trần Thị Bình</p>
+                            <p class="text-xs text-gray-400">Quản trị viên</p>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-6 py-4">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">
+                        <i class="fa-solid fa-arrow-up-from-bracket text-[10px]"></i> Tải lên
+                    </span>
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-600">Quy-dinh-05-2024-CDS.pdf</td>
+                <td class="px-6 py-4 text-sm text-gray-500 font-mono">172.16.0.12</td>
+            </tr>
+            <!-- Row 3: Login -->
+            <tr class="hover:bg-gray-50/50 transition">
+                <td class="px-6 py-4 text-sm text-gray-600 font-mono">2024-05-20 11:05</td>
+                <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                            <i class="fa-solid fa-user text-amber-600 text-[10px]"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-800">Lê Hoàng Nam</p>
+                            <p class="text-xs text-gray-400">Kỹ thuật viên</p>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-6 py-4">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium">
+                        <i class="fa-solid fa-right-to-bracket text-[10px]"></i> Đăng nhập
+                    </span>
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-600">Hệ thống quản trị</td>
+                <td class="px-6 py-4 text-sm text-gray-500 font-mono">113.161.2.8</td>
+            </tr>
+            <!-- Row 4: Delete (Red) -->
+            <tr class="hover:bg-gray-50/50 transition">
+                <td class="px-6 py-4 text-sm text-gray-600 font-mono">2024-05-20 09:45</td>
+                <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center shrink-0">
+                            <i class="fa-solid fa-user text-pink-600 text-[10px]"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-800">Phạm Minh Đức</p>
+                            <p class="text-xs text-gray-400">Chuyên viên</p>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-6 py-4">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-red-50 text-red-600 rounded-full text-xs font-medium">
+                        <i class="fa-regular fa-trash-can text-[10px]"></i> Xóa dữ liệu
+                    </span>
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-600">Log-tam-thoi-01.zip</td>
+                <td class="px-6 py-4 text-sm text-gray-500 font-mono">14.232.88.21</td>
+            </tr>
+            <!-- Row 5: Chat -->
+            <tr class="hover:bg-gray-50/50 transition">
+                <td class="px-6 py-4 text-sm text-gray-600 font-mono">2024-05-20 08:20</td>
+                <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center shrink-0">
+                            <i class="fa-solid fa-user text-violet-600 text-[10px]"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-800">Đặng Mỹ Linh</p>
+                            <p class="text-xs text-gray-400">Phân tích viên</p>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-6 py-4">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium">
+                        <i class="fa-regular fa-comment text-[10px]"></i> Trò chuyện
+                    </span>
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-600">Phân tích ngân sách quý 2</td>
+                <td class="px-6 py-4 text-sm text-gray-500 font-mono">118.69.15.4</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- Table Footer -->
+    <div class="flex items-center justify-between px-6 py-4 border-t border-gray-200">
+        <p class="text-sm text-gray-500">Hiển thị 1 đến 5 trong tổng số 1,240 hoạt động</p>
+        <div class="flex items-center gap-1">
+            <button class="px-3 py-1.5 text-sm text-gray-400 rounded-lg hover:bg-gray-100 transition">Trước</button>
+            <button class="w-8 h-8 flex items-center justify-center rounded-lg text-sm bg-blue-600 text-white font-medium">1</button>
+            <button class="w-8 h-8 flex items-center justify-center rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition">2</button>
+            <button class="w-8 h-8 flex items-center justify-center rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition">3</button>
+            <span class="text-gray-400 text-sm px-1">..</span>
+            <button class="w-8 h-8 flex items-center justify-center rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition">45</button>
+            <button class="px-3 py-1.5 text-sm text-gray-600 rounded-lg border border-gray-300 hover:bg-gray-50 transition">Tiếp theo</button>
+        </div>
+    </div>
+</div>

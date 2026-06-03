@@ -1,0 +1,49 @@
+# =========================
+# 1. AI Assistant & IDE
+# =========================
+/.claude/
+.vscode/
+.vs/
+*.user
+
+# =========================
+# 2. .NET Core (Backend & UI)
+# =========================
+bin/
+obj/
+appsettings.Development.json 
+
+# =========================
+# 3. Python (AI Worker / Crawler)
+# =========================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+env.bak/
+venv.bak/
+.env
+
+# =========================
+# 4. Data Files
+# =========================
+/data/*
+!/data/.gitkeep
+
+*.pdf
+*.docx
+*.doc
+*.xlsx
+*.csv
+*.db
+*.sqlite3
+
+# =========================
+# 5. OS Generated Files
+# =========================
+.DS_Store
+Thumbs.db

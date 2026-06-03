@@ -1,0 +1,130 @@
+@page
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Đăng nhập - LD3 AI Chatbot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+</head>
+<body class="bg-gray-100 text-gray-800 antialiased min-h-screen flex flex-col">
+
+    <!-- ==================== TOP BAR ==================== -->
+    <header class="bg-white border-b border-gray-200 px-6 shrink-0">
+        <div class="h-14 flex items-center">
+            <a href="/" class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center">
+                    <i class="fa-solid fa-heart-pulse text-blue-500"></i>
+                </div>
+                <span class="text-base font-bold text-blue-600">LD3 AI Chatbot</span>
+            </a>
+        </div>
+    </header>
+
+    <!-- ==================== MAIN CONTENT ==================== -->
+    <main class="flex-1 flex items-center justify-center px-4 py-8">
+        <div class="w-full max-w-md">
+
+            <!-- Login Card -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 px-8 pt-10 pb-8">
+
+                <!-- Shield Icon -->
+                <div class="flex justify-center mb-5">
+                    <div class="w-16 h-16 rounded-full bg-blue-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                        <i class="fa-solid fa-shield-halved text-white text-2xl"></i>
+                    </div>
+                </div>
+
+                <!-- Title -->
+                <h1 class="text-xl font-bold text-gray-800 text-center">LD3 AI Chatbot</h1>
+                <p class="text-sm font-semibold text-blue-400 text-center tracking-widest mt-1">TỈNH LÂM ĐỒNG</p>
+
+                <!-- Heading -->
+                <h2 class="text-lg font-bold text-gray-800 text-center mt-7">Chào mừng trở lại</h2>
+                <p class="text-sm text-gray-500 text-center mt-1 mb-7">
+                    Vui lòng nhập thông tin để truy cập hệ thống tri thức
+                </p>
+
+                <!-- Form -->
+                <form>
+                    <!-- Email Field -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1.5">Email đăng nhập</label>
+                        <div class="relative">
+                            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                                <i class="fa-regular fa-envelope"></i>
+                            </span>
+                            <input type="email" placeholder="name@@lamdong.gov.vn"
+                                   class="w-full h-11 pl-10 pr-4 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition" />
+                        </div>
+                    </div>
+
+                    <!-- Password Field -->
+                    <div class="mb-5">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label class="text-sm font-semibold text-gray-700">Mật khẩu</label>
+                            <a href="#" class="text-sm text-blue-500 hover:text-blue-600 font-medium">Quên mật khẩu?</a>
+                        </div>
+                        <div class="relative">
+                            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                                <i class="fa-solid fa-lock text-sm"></i>
+                            </span>
+                            <input type="password" placeholder="••••••••"
+                                   class="w-full h-11 pl-10 pr-10 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition" />
+                            <button type="button"
+                                    class="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+                                    onclick="const i=this.parentElement.querySelector('input');const ic=this.querySelector('i');if(i.type==='password'){i.type='text';ic.classList.replace('fa-eye','fa-eye-slash')}else{i.type='password';ic.classList.replace('fa-eye-slash','fa-eye')}">
+                                <i class="fa-regular fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit"
+                            class="w-full h-11 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white font-semibold rounded-lg shadow-sm hover:shadow transition">
+                        Đăng nhập
+                    </button>
+                </form>
+
+                <!-- Divider -->
+                <div class="flex items-center gap-3 my-6">
+                    <div class="flex-1 h-px bg-gray-200"></div>
+                    <span class="text-[11px] text-gray-400 font-medium uppercase tracking-wider whitespace-nowrap">
+                        Hoặc tiếp tục với
+                    </span>
+                    <div class="flex-1 h-px bg-gray-200"></div>
+                </div>
+
+                <!-- Register Link -->
+                <p class="text-sm text-gray-500 text-center">
+                    Chưa có tài khoản?
+                    <a href="/Account/Register" class="text-blue-500 hover:text-blue-600 font-semibold ml-1">
+                        Đăng ký ngay &rarr;
+                    </a>
+                </p>
+            </div>
+
+            <!-- Warning Text -->
+            <p class="text-center text-xs text-gray-400 mt-6 leading-relaxed max-w-sm mx-auto">
+                Cảnh báo: Đây là hệ thống nội bộ của Trung tâm ĐMST &amp; CĐS
+                Lâm Đồng III. Việc truy cập trái phép sẽ bị xử lý theo quy định của pháp luật.
+            </p>
+        </div>
+    </main>
+
+    <!-- ==================== FOOTER ==================== -->
+    <footer class="bg-white border-t border-gray-200 py-4 text-center shrink-0">
+        <p class="text-xs text-gray-400 mb-2">Bản quyền thuộc Trung tâm ĐMST &amp; CĐS Lâm Đồng III &copy; 2026</p>
+        <div class="flex items-center justify-center gap-4">
+            <a href="#" class="text-gray-400 hover:text-gray-600 transition"><i class="fa-solid fa-globe"></i></a>
+            <a href="#" class="text-gray-400 hover:text-gray-600 transition"><i class="fa-regular fa-envelope"></i></a>
+            <a href="#" class="text-gray-400 hover:text-gray-600 transition"><i class="fa-brands fa-facebook-f"></i></a>
+        </div>
+    </footer>
+
+</body>
+</html>

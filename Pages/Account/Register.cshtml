@@ -1,0 +1,159 @@
+@page
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Đăng ký - LD3 AI Chatbot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+</head>
+<body class="bg-gray-100 text-gray-800 antialiased min-h-screen flex flex-col">
+
+    <!-- ==================== TOP BAR ==================== -->
+    <header class="bg-white border-b border-gray-200 px-6 shrink-0">
+        <div class="h-14 flex items-center">
+            <a href="/" class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center">
+                    <i class="fa-solid fa-heart-pulse text-blue-500"></i>
+                </div>
+                <span class="text-base font-bold text-blue-600">LD3 AI Chatbot</span>
+            </a>
+        </div>
+    </header>
+
+    <!-- ==================== MAIN CONTENT ==================== -->
+    <main class="flex-1 flex flex-col items-center justify-center px-4 py-8">
+
+        <!-- Step Indicator -->
+        <div class="text-center mb-6">
+            <p class="text-sm font-semibold text-blue-500 uppercase tracking-wider">Bước 1 trên 2</p>
+            <div class="w-48 h-1 bg-gray-200 rounded-full mt-2.5 mx-auto overflow-hidden">
+                <div class="w-1/2 h-full bg-blue-500 rounded-full"></div>
+            </div>
+        </div>
+
+        <!-- Register Card -->
+        <div class="w-full max-w-md bg-white rounded-xl shadow-sm border border-gray-100 px-8 pt-8 pb-7">
+
+            <!-- Title -->
+            <h1 class="text-xl font-bold text-gray-800 text-center">Đăng ký tài khoản mới</h1>
+            <p class="text-sm text-gray-500 text-center mt-1.5 mb-6">
+                Nhập thông tin bên dưới để truy cập nền tảng AI nội bộ
+            </p>
+
+            <!-- Form -->
+            <form class="space-y-4">
+
+                <!-- Full Name -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Họ và tên</label>
+                    <div class="relative">
+                        <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                            <i class="fa-regular fa-user"></i>
+                        </span>
+                        <input type="text" placeholder="Nguyễn Văn A"
+                               class="w-full h-11 pl-10 pr-4 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition" />
+                    </div>
+                </div>
+
+                <!-- Official Email -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Email công vụ</label>
+                    <div class="relative">
+                        <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                            <i class="fa-regular fa-envelope"></i>
+                        </span>
+                        <input type="email" placeholder="ten.nv@@lamdong.gov.vn"
+                               class="w-full h-11 pl-10 pr-4 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition" />
+                    </div>
+                </div>
+
+                <!-- Password -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Mật khẩu</label>
+                    <div class="relative">
+                        <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                            <i class="fa-solid fa-shield-halved text-sm"></i>
+                        </span>
+                        <input type="password" placeholder="••••••••"
+                               class="w-full h-11 pl-10 pr-10 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition" />
+                        <button type="button"
+                                class="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+                                onclick="const i=this.parentElement.querySelector('input');const ic=this.querySelector('i');if(i.type==='password'){i.type='text';ic.classList.replace('fa-eye','fa-eye-slash')}else{i.type='password';ic.classList.replace('fa-eye-slash','fa-eye')}">
+                            <i class="fa-regular fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Confirm Password -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Nhập lại mật khẩu</label>
+                    <div class="relative">
+                        <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                            <i class="fa-solid fa-shield-halved text-sm"></i>
+                        </span>
+                        <input type="password" placeholder="••••••••"
+                               class="w-full h-11 pl-10 pr-10 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition" />
+                        <button type="button"
+                                class="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+                                onclick="const i=this.parentElement.querySelector('input');const ic=this.querySelector('i');if(i.type==='password'){i.type='text';ic.classList.replace('fa-eye','fa-eye-slash')}else{i.type='password';ic.classList.replace('fa-eye-slash','fa-eye')}">
+                            <i class="fa-regular fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Department ID (Highlighted Section) -->
+                <div class="pt-1">
+                    <label class="flex items-center gap-1.5 text-sm font-semibold text-blue-500 mb-1.5">
+                        <i class="fa-solid fa-hashtag text-xs"></i>
+                        Mã định danh Phòng ban/Đơn vị
+                    </label>
+                    <input type="text" placeholder="Nhập mã định danh 8 ký tự" maxlength="8"
+                           class="w-full h-11 px-4 bg-blue-50 border border-blue-200 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition" />
+                    <p class="text-xs text-gray-400 mt-1.5">
+                        <span class="italic">* Vui lòng liên hệ quản trị viên để nhận mã này</span>
+                    </p>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="pt-2">
+                    <button type="submit"
+                            class="w-full h-11 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white font-semibold rounded-lg shadow-sm hover:shadow transition">
+                        Hoàn tất đăng ký
+                    </button>
+                </div>
+            </form>
+
+            <!-- Login Link -->
+            <p class="text-sm text-gray-500 text-center mt-5">
+                Đã có tài khoản?
+                <a href="/Account/Login" class="text-blue-500 hover:text-blue-600 font-semibold ml-1">Đăng nhập</a>
+            </p>
+        </div>
+
+        <!-- Footer Links -->
+        <div class="flex items-center gap-3 mt-6">
+            <a href="#" class="text-xs text-gray-400 uppercase tracking-wide hover:text-gray-600 transition">Điều khoản</a>
+            <span class="text-gray-300 text-xs">&bull;</span>
+            <a href="#" class="text-xs text-gray-400 uppercase tracking-wide hover:text-gray-600 transition">Bảo mật</a>
+            <span class="text-gray-300 text-xs">&bull;</span>
+            <a href="#" class="text-xs text-gray-400 uppercase tracking-wide hover:text-gray-600 transition">Hỗ trợ</a>
+        </div>
+    </main>
+
+    <!-- ==================== FOOTER ==================== -->
+    <footer class="bg-white border-t border-gray-200 py-4 text-center shrink-0">
+        <p class="text-xs text-gray-400 mb-2">Bản quyền thuộc Trung tâm ĐMST &amp; CĐS Lâm Đồng III &copy; 2026</p>
+        <div class="flex items-center justify-center gap-4">
+            <a href="#" class="text-gray-400 hover:text-gray-600 transition"><i class="fa-solid fa-globe"></i></a>
+            <a href="#" class="text-gray-400 hover:text-gray-600 transition"><i class="fa-regular fa-envelope"></i></a>
+            <a href="#" class="text-gray-400 hover:text-gray-600 transition"><i class="fa-brands fa-facebook-f"></i></a>
+        </div>
+    </footer>
+
+</body>
+</html>

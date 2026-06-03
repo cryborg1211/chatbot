@@ -1,0 +1,252 @@
+@page
+@{
+    ViewData["Title"] = "Quản lý người dùng";
+    ViewData["ActiveNav"] = "Users";
+}
+
+<!-- Page Header -->
+<div class="flex items-start justify-between mb-6">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-800">Quản lý người dùng</h1>
+        <p class="text-sm text-gray-500 mt-1">Quản lý phê duyệt, phân quyền và giám sát trạng thái người dùng trong hệ thống.</p>
+    </div>
+    <button class="flex items-center gap-2 px-5 py-2.5 bg-gray-800 hover:bg-gray-900 text-white rounded-lg text-sm font-medium transition shadow-sm">
+        <i class="fa-solid fa-user-plus text-xs"></i>
+        Thêm người dùng mới
+    </button>
+</div>
+
+<!-- Stats Cards -->
+<div class="grid grid-cols-4 gap-4 mb-8">
+    <!-- Total Users -->
+    <div class="bg-white rounded-lg border border-gray-200 p-5">
+        <div class="flex items-center justify-between mb-3">
+            <div class="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
+                <i class="fa-solid fa-users text-blue-500"></i>
+            </div>
+            <span class="text-[11px] text-green-600 bg-green-50 px-2 py-0.5 rounded-full font-medium">+12% so với tháng trước</span>
+        </div>
+        <p class="text-sm text-gray-500">Tổng người dùng</p>
+        <p class="text-3xl font-bold text-gray-800 mt-1">1,240</p>
+    </div>
+    <!-- Total Documents -->
+    <div class="bg-white rounded-lg border border-gray-200 p-5">
+        <div class="flex items-center justify-between mb-3">
+            <div class="w-10 h-10 bg-orange-50 rounded-lg flex items-center justify-center">
+                <i class="fa-regular fa-file-lines text-orange-500"></i>
+            </div>
+            <span class="text-[11px] text-green-600 bg-green-50 px-2 py-0.5 rounded-full font-medium">+5.4k tài liệu mới</span>
+        </div>
+        <p class="text-sm text-gray-500">Tổng tài liệu</p>
+        <p class="text-3xl font-bold text-gray-800 mt-1">45,800</p>
+    </div>
+    <!-- AI Questions Today -->
+    <div class="bg-white rounded-lg border border-gray-200 p-5">
+        <div class="flex items-center justify-between mb-3">
+            <div class="w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center">
+                <i class="fa-regular fa-comment text-purple-500"></i>
+            </div>
+            <span class="text-[11px] text-green-600 bg-green-50 px-2 py-0.5 rounded-full font-medium">+18% so với hôm qua</span>
+        </div>
+        <p class="text-sm text-gray-500">Câu hỏi AI hôm nay</p>
+        <p class="text-3xl font-bold text-gray-800 mt-1">3,120</p>
+    </div>
+    <!-- Satisfaction -->
+    <div class="bg-white rounded-lg border border-gray-200 p-5">
+        <div class="flex items-center justify-between mb-3">
+            <div class="w-10 h-10 bg-yellow-50 rounded-lg flex items-center justify-center">
+                <i class="fa-regular fa-star text-yellow-500"></i>
+            </div>
+            <span class="text-[11px] text-gray-500 bg-gray-50 px-2 py-0.5 rounded-full font-medium">Dựa trên 2.4k đánh giá</span>
+        </div>
+        <p class="text-sm text-gray-500">Độ hài lòng</p>
+        <p class="text-3xl font-bold text-gray-800 mt-1">4.8/5</p>
+    </div>
+</div>
+
+<!-- User Table -->
+<div class="bg-white rounded-lg border border-gray-200">
+    <!-- Table Header Bar -->
+    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+        <div class="flex items-center gap-3">
+            <h2 class="text-lg font-bold text-gray-800">Danh sách người dùng</h2>
+            <button class="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition">
+                <i class="fa-solid fa-filter text-xs"></i> Lọc bộ phận
+            </button>
+            <button class="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition">
+                <i class="fa-solid fa-arrow-down-wide-short text-xs"></i> Sắp xếp
+            </button>
+        </div>
+        <span class="text-sm text-gray-500">Hiển thị 1 - 5 của 1,240 người dùng</span>
+    </div>
+
+    <!-- Table -->
+    <table class="w-full">
+        <thead>
+            <tr class="border-b border-gray-100 bg-gray-50/50">
+                <th class="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">Tên người dùng</th>
+                <th class="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">Email</th>
+                <th class="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">Phòng ban</th>
+                <th class="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">Trạng thái</th>
+                <th class="text-right text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">Thao tác</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+            <!-- Row 1: Active -->
+            <tr class="hover:bg-gray-50/50 transition">
+                <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                            <i class="fa-solid fa-user text-blue-600 text-xs"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-800">Nguyễn Văn An</p>
+                            <p class="text-xs text-gray-400">Tham gia: 12/05/2024</p>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-600">an.nv@@lamdong.gov.vn</td>
+                <td class="px-6 py-4">
+                    <span class="px-2.5 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium whitespace-nowrap">Sở Thông tin &amp; Truyền thông</span>
+                </td>
+                <td class="px-6 py-4">
+                    <span class="text-sm text-green-600 font-medium">Đã kích hoạt</span>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="flex items-center justify-end gap-2">
+                        <button class="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition">
+                            <i class="fa-regular fa-pen-to-square text-xs"></i> Sửa
+                        </button>
+                        <button class="p-1.5 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                    </div>
+                </td>
+            </tr>
+            <!-- Row 2: Pending -->
+            <tr class="hover:bg-gray-50/50 transition">
+                <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-full bg-pink-100 flex items-center justify-center shrink-0">
+                            <i class="fa-solid fa-user text-pink-600 text-xs"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-800">Trần Thị Bích</p>
+                            <p class="text-xs text-gray-400">Tham gia: 15/05/2024</p>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-600">bich.tt@@lamdong.gov.vn</td>
+                <td class="px-6 py-4">
+                    <span class="px-2.5 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium whitespace-nowrap">Sở Kế hoạch &amp; Đầu tư</span>
+                </td>
+                <td class="px-6 py-4">
+                    <span class="text-sm text-yellow-600 font-medium">Chờ phê duyệt</span>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="flex items-center justify-end gap-2">
+                        <button class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition">Phê duyệt</button>
+                        <button class="px-3 py-1.5 border border-gray-300 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition">Từ chối</button>
+                        <button class="p-1.5 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                    </div>
+                </td>
+            </tr>
+            <!-- Row 3: Active -->
+            <tr class="hover:bg-gray-50/50 transition">
+                <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                            <i class="fa-solid fa-user text-green-600 text-xs"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-800">Lê Hoàng Long</p>
+                            <p class="text-xs text-gray-400">Tham gia: 10/04/2024</p>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-600">long.lh@@lamdong.gov.vn</td>
+                <td class="px-6 py-4">
+                    <span class="px-2.5 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium whitespace-nowrap">Văn phòng UBND Tỉnh</span>
+                </td>
+                <td class="px-6 py-4">
+                    <span class="text-sm text-green-600 font-medium">Đã kích hoạt</span>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="flex items-center justify-end gap-2">
+                        <button class="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition">
+                            <i class="fa-regular fa-pen-to-square text-xs"></i> Sửa
+                        </button>
+                        <button class="p-1.5 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                    </div>
+                </td>
+            </tr>
+            <!-- Row 4: Pending -->
+            <tr class="hover:bg-gray-50/50 transition">
+                <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                            <i class="fa-solid fa-user text-amber-600 text-xs"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-800">Phạm Minh Đức</p>
+                            <p class="text-xs text-gray-400">Tham gia: 18/05/2024</p>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-600">duc.pm@@lamdong.gov.vn</td>
+                <td class="px-6 py-4">
+                    <span class="px-2.5 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium whitespace-nowrap">Sở Tài chính</span>
+                </td>
+                <td class="px-6 py-4">
+                    <span class="text-sm text-yellow-600 font-medium">Chờ phê duyệt</span>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="flex items-center justify-end gap-2">
+                        <button class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition">Phê duyệt</button>
+                        <button class="px-3 py-1.5 border border-gray-300 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition">Từ chối</button>
+                        <button class="p-1.5 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                    </div>
+                </td>
+            </tr>
+            <!-- Row 5: Active -->
+            <tr class="hover:bg-gray-50/50 transition">
+                <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-full bg-violet-100 flex items-center justify-center shrink-0">
+                            <i class="fa-solid fa-user text-violet-600 text-xs"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-800">Hoàng Diệu Linh</p>
+                            <p class="text-xs text-gray-400">Tham gia: 01/03/2024</p>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-600">linh.hd@@lamdong.gov.vn</td>
+                <td class="px-6 py-4">
+                    <span class="px-2.5 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium whitespace-nowrap">Sở Tư pháp</span>
+                </td>
+                <td class="px-6 py-4">
+                    <span class="text-sm text-green-600 font-medium">Đã kích hoạt</span>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="flex items-center justify-end gap-2">
+                        <button class="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition">
+                            <i class="fa-regular fa-pen-to-square text-xs"></i> Sửa
+                        </button>
+                        <button class="p-1.5 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                    </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- Table Footer -->
+    <div class="flex items-center justify-between px-6 py-4 border-t border-gray-200">
+        <p class="text-sm text-gray-400 italic">Dữ liệu được cập nhật thời gian thực từ máy chủ Lâm Đồng III</p>
+        <div class="flex items-center gap-1">
+            <button class="w-8 h-8 flex items-center justify-center rounded-lg text-sm text-gray-400 hover:bg-gray-100 transition">&lt;</button>
+            <button class="w-8 h-8 flex items-center justify-center rounded-lg text-sm bg-blue-600 text-white font-medium">1</button>
+            <button class="w-8 h-8 flex items-center justify-center rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition">2</button>
+            <button class="w-8 h-8 flex items-center justify-center rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition">3</button>
+            <button class="w-8 h-8 flex items-center justify-center rounded-lg text-sm text-gray-400 hover:bg-gray-100 transition">&gt;</button>
+        </div>
+    </div>
+</div>

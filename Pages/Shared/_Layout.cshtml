@@ -1,0 +1,144 @@
+@{
+    var activeNav = ViewData["ActiveNav"]?.ToString() ?? "Users";
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@(ViewData["Title"] ?? "Trang chủ") - LD3 AI Chatbot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body class="bg-gray-50 text-gray-800 antialiased">
+    <div class="flex h-screen overflow-hidden">
+
+        <!-- ==================== LEFT SIDEBAR ==================== -->
+        <aside class="w-64 bg-white border-r border-gray-200 flex flex-col shrink-0">
+
+            <!-- Logo -->
+            <div class="h-16 flex items-center gap-2.5 px-5 border-b border-gray-100">
+                <div class="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
+                    <i class="fa-solid fa-heart-pulse text-blue-500 text-lg"></i>
+                </div>
+                <span class="text-lg font-bold text-blue-600 tracking-tight">LD3 AI Chatbot</span>
+            </div>
+
+            <!-- New Chat Button -->
+            <div class="px-4 pt-4 pb-2">
+                <a href="/"
+                   class="flex items-center justify-center gap-2 h-10 w-full border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition cursor-pointer">
+                    <i class="fa-solid fa-plus text-xs"></i>
+                    <span>Cuộc trò chuyện mới</span>
+                </a>
+            </div>
+
+            <!-- Scrollable Middle -->
+            <div class="flex-1 overflow-y-auto px-3 pt-2">
+
+                <!-- Recent Chats -->
+                <p class="px-2 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Gần đây</p>
+                <nav class="space-y-0.5 mb-4">
+                    <a href="#" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition">
+                        <i class="fa-regular fa-comment text-gray-400 text-xs"></i>
+                        <span class="truncate">Hướng dẫn chuyển đổi số</span>
+                    </a>
+                    <a href="#" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition">
+                        <i class="fa-regular fa-comment text-gray-400 text-xs"></i>
+                        <span class="truncate">Quy trình xử lý hồ sơ</span>
+                    </a>
+                    <a href="#" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition">
+                        <i class="fa-regular fa-comment text-gray-400 text-xs"></i>
+                        <span class="truncate">Báo cáo quý III</span>
+                    </a>
+                    <a href="#" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition">
+                        <i class="fa-regular fa-comment text-gray-400 text-xs"></i>
+                        <span class="truncate">Thông tin nội bộ</span>
+                    </a>
+                </nav>
+
+                <!-- Divider -->
+                <div class="h-px bg-gray-200 mx-2 my-3"></div>
+
+                <!-- Admin Navigation -->
+                <nav class="space-y-0.5">
+                    <a href="/Admin/Users"
+                       class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm @(activeNav == "Users" ? "font-medium bg-blue-50 text-blue-700" : "text-gray-600 hover:bg-gray-100 transition")">
+                        <i class="fa-solid fa-users text-sm w-5 text-center @(activeNav == "Users" ? "text-blue-500" : "text-gray-400")"></i>
+                        <span>Quản lý người dùng</span>
+                    </a>
+                    <a href="/Admin/Feedback"
+                       class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm @(activeNav == "Feedback" ? "font-medium bg-blue-50 text-blue-700" : "text-gray-600 hover:bg-gray-100 transition")">
+                        <i class="fa-regular fa-comment-dots text-sm w-5 text-center @(activeNav == "Feedback" ? "text-blue-500" : "text-gray-400")"></i>
+                        <span>Phản hồi &amp; Đánh giá</span>
+                    </a>
+                    <a href="/Admin/Logs"
+                       class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm @(activeNav == "Logs" ? "font-medium bg-blue-50 text-blue-700" : "text-gray-600 hover:bg-gray-100 transition")">
+                        <i class="fa-solid fa-clock-rotate-left text-sm w-5 text-center @(activeNav == "Logs" ? "text-blue-500" : "text-gray-400")"></i>
+                        <span>Nhật ký hệ thống</span>
+                    </a>
+                </nav>
+            </div>
+
+            <!-- Bottom: Settings & Logout -->
+            <div class="border-t border-gray-200 px-3 py-3 space-y-0.5">
+                <a href="#"
+                   class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition">
+                    <i class="fa-solid fa-gear text-gray-400 text-sm w-5 text-center"></i>
+                    <span>Cài đặt hệ thống</span>
+                </a>
+                <a href="/Account/Login"
+                   class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-red-500 hover:bg-red-50 transition">
+                    <i class="fa-solid fa-right-from-bracket text-red-400 text-sm w-5 text-center"></i>
+                    <span>Đăng xuất</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- ==================== RIGHT AREA ==================== -->
+        <div class="flex-1 flex flex-col min-w-0">
+
+            <!-- Top Header -->
+            <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 shrink-0">
+                <!-- Search Bar -->
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                    <input type="text" placeholder="Tìm kiếm..."
+                           class="w-64 h-9 pl-9 pr-4 bg-gray-50 border border-gray-200 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition" />
+                </div>
+
+                <!-- Right: Notification + Profile -->
+                <div class="flex items-center gap-4">
+                    <button class="relative w-9 h-9 flex items-center justify-center text-gray-500 hover:bg-gray-100 rounded-lg transition">
+                        <i class="fa-regular fa-bell text-lg"></i>
+                        <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white"></span>
+                    </button>
+                    <div class="h-6 w-px bg-gray-200"></div>
+                    <div class="flex items-center gap-3 cursor-pointer">
+                        <div class="text-right leading-tight">
+                            <p class="text-sm font-medium text-gray-700">Quản trị viên</p>
+                            <p class="text-xs text-gray-400">Lâm Đồng III</p>
+                        </div>
+                        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center ring-2 ring-blue-100">
+                            <i class="fa-solid fa-user text-white text-xs"></i>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Page Content -->
+            <main class="flex-1 overflow-y-auto p-6">
+                @RenderBody()
+            </main>
+
+            <!-- Footer -->
+            <footer class="bg-white border-t border-gray-200 py-3 px-6 text-center shrink-0">
+                <p class="text-xs text-gray-400">&copy; 2024 Trung tâm ĐMST &amp; CĐS Lâm Đồng III. Hệ thống quản trị AI hợp nhất.</p>
+            </footer>
+        </div>
+    </div>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
