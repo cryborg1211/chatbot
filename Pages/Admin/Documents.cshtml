@@ -1,6 +1,35 @@
 @page
+@model chatbot.Pages.Admin.DocumentsModel
+@using chatbot.Models
 @{
     Layout = null;
+
+    // ---- Local rendering helpers (kept inline — they're page-specific) ----
+
+    (string Wrap, string Icon, string Label) StatusChip(DocumentStatus s) => s switch
+    {
+        DocumentStatus.Ready      => ("bg-green-50 text-green-700",  "fa-solid fa-circle-check",         "Đã sẵn sàng"),
+        DocumentStatus.Processing => ("bg-yellow-50 text-yellow-700","fa-solid fa-spinner fa-spin",      "Đang vector hóa"),
+        DocumentStatus.Pending    => ("bg-gray-100 text-gray-600",   "fa-regular fa-clock",              "Chờ xử lý"),
+        DocumentStatus.Failed     => ("bg-red-100 text-red-600",     "fa-solid fa-circle-exclamation",   "Lỗi xử lý"),
+        _                          => ("bg-gray-100 text-gray-600",  "fa-solid fa-circle",               s.ToString())
+    };
+
+    (string BgClass, string TextClass, string IconClass) FileIcon(string mime) => mime switch
+    {
+        "application/pdf"  => ("bg-red-50",   "text-red-500",   "fa-regular fa-file-pdf"),
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                           => ("bg-blue-50",  "text-blue-500",  "fa-regular fa-file-word"),
+        "text/plain"       => ("bg-gray-50",  "text-gray-500",  "fa-regular fa-file-lines"),
+        _                  => ("bg-gray-50",  "text-gray-500",  "fa-regular fa-file")
+    };
+
+    string FormatSize(long bytes) => bytes switch
+    {
+        < 1024              => $"{bytes} B",
+        < 1024L * 1024      => $"{bytes / 1024.0:F1} KB",
+        _                   => $"{bytes / (1024.0 * 1024.0):F1} MB"
+    };
 }
 <!DOCTYPE html>
 <html lang="vi">
@@ -41,10 +70,14 @@
                     <h1 class="text-2xl font-bold text-gray-800">Quản lý tài liệu tri thức</h1>
                     <p class="text-sm text-gray-500 mt-1">Quản lý và tải lên các tài liệu làm cơ sở dữ liệu cho AI Chatbot của Trung tâm LD3.</p>
                 </div>
-                <button class="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition shadow-sm">
+                <button id="upload-trigger" type="button"
+                        class="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition shadow-sm">
                     <i class="fa-solid fa-plus text-xs"></i>
                     Tải lên tài liệu mới
                 </button>
+                <input id="upload-input" type="file"
+                       accept="application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+                       class="hidden" />
             </div>
 
             <!-- Stats Cards -->
@@ -56,7 +89,7 @@
                         </div>
                         <span class="text-sm text-gray-500">Tổng số tài liệu</span>
                     </div>
-                    <p class="text-3xl font-bold text-gray-800">42</p>
+                    <p class="text-3xl font-bold text-gray-800">@Model.TotalCount</p>
                 </div>
                 <div class="bg-white rounded-lg border border-gray-200 p-5">
                     <div class="flex items-center gap-3 mb-2">
@@ -65,7 +98,7 @@
                         </div>
                         <span class="text-sm text-gray-500">Đã sẵn sàng</span>
                     </div>
-                    <p class="text-3xl font-bold text-gray-800">38</p>
+                    <p class="text-3xl font-bold text-gray-800">@Model.ReadyCount</p>
                 </div>
                 <div class="bg-white rounded-lg border border-gray-200 p-5">
                     <div class="flex items-center gap-3 mb-2">
@@ -74,7 +107,7 @@
                         </div>
                         <span class="text-sm text-gray-500">Đang xử lý</span>
                     </div>
-                    <p class="text-3xl font-bold text-gray-800">3</p>
+                    <p class="text-3xl font-bold text-gray-800">@Model.ProcessingCount</p>
                 </div>
                 <div class="bg-white rounded-lg border border-gray-200 p-5">
                     <div class="flex items-center gap-3 mb-2">
@@ -83,13 +116,12 @@
                         </div>
                         <span class="text-sm text-gray-500">Lỗi hệ thống</span>
                     </div>
-                    <p class="text-3xl font-bold text-gray-800">1</p>
+                    <p class="text-3xl font-bold text-gray-800">@Model.FailedCount</p>
                 </div>
             </div>
 
             <!-- File Table -->
             <div class="bg-white rounded-lg border border-gray-200 mb-6">
-                <!-- Table Header Bar -->
                 <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
                     <div class="flex items-center gap-2">
                         <i class="fa-regular fa-folder-open text-gray-400"></i>
@@ -104,9 +136,6 @@
                         <button class="flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition">
                             <i class="fa-solid fa-filter text-xs"></i> Bộ lọc
                         </button>
-                        <div class="flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600">
-                            <i class="fa-regular fa-calendar text-xs text-gray-400"></i> Tháng 5, 2024
-                        </div>
                     </div>
                 </div>
 
@@ -122,151 +151,62 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
-                        <!-- Row 1: Ready -->
-                        <tr class="hover:bg-gray-50/50 transition">
-                            <td class="px-6 py-4">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center shrink-0">
-                                        <i class="fa-regular fa-file-pdf text-red-500 text-sm"></i>
+                        @if (Model.Documents.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="6" class="px-6 py-12 text-center text-sm text-gray-400">
+                                    <i class="fa-regular fa-folder-open text-2xl mb-2 block"></i>
+                                    Chưa có tài liệu nào. Bấm "Tải lên tài liệu mới" để bắt đầu.
+                                </td>
+                            </tr>
+                        }
+                        @foreach (var doc in Model.Documents)
+                        {
+                            var fileIcon = FileIcon(doc.MimeType);
+                            var chip     = StatusChip(doc.Status);
+                            var rowBg    = doc.Status == DocumentStatus.Failed ? "bg-red-50/30" : string.Empty;
+                            <tr class="hover:bg-gray-50/50 transition @rowBg">
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 @fileIcon.BgClass rounded-lg flex items-center justify-center shrink-0">
+                                            <i class="@fileIcon.IconClass @fileIcon.TextClass text-sm"></i>
+                                        </div>
+                                        <span class="text-sm text-gray-700 font-medium truncate max-w-md" title="@doc.OriginalFileName">
+                                            @doc.OriginalFileName
+                                        </span>
                                     </div>
-                                    <span class="text-sm text-gray-700 font-medium">Quy_dinh_chuyen_doi_so_Lam_Dong_2024.p</span>
-                                </div>
-                            </td>
-                            <td class="px-4 py-4 text-sm text-gray-500">24/05/2024</td>
-                            <td class="px-4 py-4 text-sm text-gray-500">2.4 MB</td>
-                            <td class="px-4 py-4 text-sm text-gray-500">Admin</td>
-                            <td class="px-4 py-4">
-                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-green-50 text-green-700 rounded-full text-xs font-medium">
-                                    <i class="fa-solid fa-circle-check text-[10px]"></i> Đã sẵn sàng
-                                </span>
-                            </td>
-                            <td class="px-6 py-4">
-                                <div class="flex items-center justify-end gap-2">
-                                    <button class="text-gray-400 hover:text-blue-600 transition"><i class="fa-solid fa-download text-sm"></i></button>
-                                    <button class="text-gray-400 hover:text-red-500 transition"><i class="fa-regular fa-trash-can text-sm"></i></button>
-                                    <button class="text-gray-400 hover:text-gray-600 transition"><i class="fa-solid fa-ellipsis-vertical text-sm"></i></button>
-                                </div>
-                            </td>
-                        </tr>
-                        <!-- Row 2: Processing -->
-                        <tr class="hover:bg-gray-50/50 transition">
-                            <td class="px-6 py-4">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
-                                        <i class="fa-regular fa-file-word text-blue-500 text-sm"></i>
+                                </td>
+                                <td class="px-4 py-4 text-sm text-gray-500">@doc.UploadedAt.ToLocalTime().ToString("dd/MM/yyyy")</td>
+                                <td class="px-4 py-4 text-sm text-gray-500">@FormatSize(doc.SizeBytes)</td>
+                                <td class="px-4 py-4 text-sm text-gray-500 truncate max-w-[8rem]">@(doc.Uploader?.FullName ?? doc.UploaderId)</td>
+                                <td class="px-4 py-4">
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 @chip.Wrap rounded-full text-xs font-medium"
+                                          title="@doc.ErrorMessage">
+                                        <i class="@chip.Icon text-[10px]"></i> @chip.Label
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center justify-end gap-2">
+                                        <button class="text-gray-400 hover:text-blue-600 transition" title="Tải xuống">
+                                            <i class="fa-solid fa-download text-sm"></i>
+                                        </button>
+                                        <button class="text-gray-400 hover:text-red-500 transition" title="Xóa">
+                                            <i class="fa-regular fa-trash-can text-sm"></i>
+                                        </button>
+                                        <button class="text-gray-400 hover:text-gray-600 transition">
+                                            <i class="fa-solid fa-ellipsis-vertical text-sm"></i>
+                                        </button>
                                     </div>
-                                    <span class="text-sm text-gray-700 font-medium">Bao_cao_hieu_qua_AI_Chatbot_Q1.docx</span>
-                                </div>
-                            </td>
-                            <td class="px-4 py-4 text-sm text-gray-500">22/05/2024</td>
-                            <td class="px-4 py-4 text-sm text-gray-500">1.1 MB</td>
-                            <td class="px-4 py-4 text-sm text-gray-500">Nguyen Van A</td>
-                            <td class="px-4 py-4">
-                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-yellow-50 text-yellow-700 rounded-full text-xs font-medium">
-                                    <i class="fa-solid fa-spinner fa-spin text-[10px]"></i> Đang vector hóa
-                                </span>
-                            </td>
-                            <td class="px-6 py-4">
-                                <div class="flex items-center justify-end gap-2">
-                                    <button class="text-gray-400 hover:text-blue-600 transition"><i class="fa-solid fa-download text-sm"></i></button>
-                                    <button class="text-gray-400 hover:text-red-500 transition"><i class="fa-regular fa-trash-can text-sm"></i></button>
-                                    <button class="text-gray-400 hover:text-gray-600 transition"><i class="fa-solid fa-ellipsis-vertical text-sm"></i></button>
-                                </div>
-                            </td>
-                        </tr>
-                        <!-- Row 3: Ready -->
-                        <tr class="hover:bg-gray-50/50 transition">
-                            <td class="px-6 py-4">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center shrink-0">
-                                        <i class="fa-regular fa-file-pdf text-red-500 text-sm"></i>
-                                    </div>
-                                    <span class="text-sm text-gray-700 font-medium">Huong_dan_su_dung_he_thong_noi_bo.pdf</span>
-                                </div>
-                            </td>
-                            <td class="px-4 py-4 text-sm text-gray-500">20/05/2024</td>
-                            <td class="px-4 py-4 text-sm text-gray-500">5.8 MB</td>
-                            <td class="px-4 py-4 text-sm text-gray-500">Admin</td>
-                            <td class="px-4 py-4">
-                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-green-50 text-green-700 rounded-full text-xs font-medium">
-                                    <i class="fa-solid fa-circle-check text-[10px]"></i> Đã sẵn sàng
-                                </span>
-                            </td>
-                            <td class="px-6 py-4">
-                                <div class="flex items-center justify-end gap-2">
-                                    <button class="text-gray-400 hover:text-blue-600 transition"><i class="fa-solid fa-download text-sm"></i></button>
-                                    <button class="text-gray-400 hover:text-red-500 transition"><i class="fa-regular fa-trash-can text-sm"></i></button>
-                                    <button class="text-gray-400 hover:text-gray-600 transition"><i class="fa-solid fa-ellipsis-vertical text-sm"></i></button>
-                                </div>
-                            </td>
-                        </tr>
-                        <!-- Row 4: Pending -->
-                        <tr class="hover:bg-gray-50/50 transition">
-                            <td class="px-6 py-4">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-8 h-8 bg-green-50 rounded-lg flex items-center justify-center shrink-0">
-                                        <i class="fa-regular fa-file-excel text-green-600 text-sm"></i>
-                                    </div>
-                                    <span class="text-sm text-gray-700 font-medium">Danh_sach_nhan_su_LD3_Innovation.xlsx</span>
-                                </div>
-                            </td>
-                            <td class="px-4 py-4 text-sm text-gray-500">19/05/2024</td>
-                            <td class="px-4 py-4 text-sm text-gray-500">850 KB</td>
-                            <td class="px-4 py-4 text-sm text-gray-500">Tran Thi B</td>
-                            <td class="px-4 py-4">
-                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">
-                                    <i class="fa-regular fa-clock text-[10px]"></i> Chờ xử lý
-                                </span>
-                            </td>
-                            <td class="px-6 py-4">
-                                <div class="flex items-center justify-end gap-2">
-                                    <button class="text-gray-400 hover:text-blue-600 transition"><i class="fa-solid fa-download text-sm"></i></button>
-                                    <button class="text-gray-400 hover:text-red-500 transition"><i class="fa-regular fa-trash-can text-sm"></i></button>
-                                    <button class="text-gray-400 hover:text-gray-600 transition"><i class="fa-solid fa-ellipsis-vertical text-sm"></i></button>
-                                </div>
-                            </td>
-                        </tr>
-                        <!-- Row 5: Error -->
-                        <tr class="hover:bg-gray-50/50 transition bg-red-50/30">
-                            <td class="px-6 py-4">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center shrink-0">
-                                        <i class="fa-regular fa-file-pdf text-red-500 text-sm"></i>
-                                    </div>
-                                    <span class="text-sm text-gray-700 font-medium">Chien_luoc_phat_trien_ky_thuat_so_2025.pdf</span>
-                                </div>
-                            </td>
-                            <td class="px-4 py-4 text-sm text-gray-500">15/05/2024</td>
-                            <td class="px-4 py-4 text-sm text-gray-500">12.0 MB</td>
-                            <td class="px-4 py-4 text-sm text-gray-500">Admin</td>
-                            <td class="px-4 py-4">
-                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-red-100 text-red-600 rounded-full text-xs font-semibold">
-                                    <i class="fa-solid fa-circle-exclamation text-[10px]"></i> Lỗi xử lý
-                                </span>
-                            </td>
-                            <td class="px-6 py-4">
-                                <div class="flex items-center justify-end gap-2">
-                                    <button class="text-gray-400 hover:text-blue-600 transition"><i class="fa-solid fa-download text-sm"></i></button>
-                                    <button class="text-gray-400 hover:text-red-500 transition"><i class="fa-regular fa-trash-can text-sm"></i></button>
-                                    <button class="text-gray-400 hover:text-gray-600 transition"><i class="fa-solid fa-ellipsis-vertical text-sm"></i></button>
-                                </div>
-                            </td>
-                        </tr>
+                                </td>
+                            </tr>
+                        }
                     </tbody>
                 </table>
 
-                <!-- Table Footer -->
                 <div class="flex items-center justify-between px-6 py-4 border-t border-gray-200">
-                    <p class="text-sm text-gray-500">Hiển thị 5 trên tổng số 42 tài liệu</p>
-                    <div class="flex items-center gap-1">
-                        <button class="px-3 py-1.5 text-sm text-gray-400 rounded-lg hover:bg-gray-100 transition">Trước</button>
-                        <button class="w-8 h-8 flex items-center justify-center rounded-lg text-sm bg-blue-600 text-white font-medium">1</button>
-                        <button class="w-8 h-8 flex items-center justify-center rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition">2</button>
-                        <button class="w-8 h-8 flex items-center justify-center rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition">3</button>
-                        <span class="text-gray-400 text-sm px-1">...</span>
-                        <button class="w-8 h-8 flex items-center justify-center rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition">9</button>
-                        <button class="px-3 py-1.5 text-sm text-gray-600 rounded-lg border border-gray-300 hover:bg-gray-50 transition">Sau</button>
-                    </div>
+                    <p class="text-sm text-gray-500">
+                        Hiển thị @Model.Documents.Count trên tổng số @Model.TotalCount tài liệu
+                    </p>
                 </div>
             </div>
 
@@ -278,7 +218,10 @@
                 <div>
                     <p class="text-sm font-semibold text-amber-700 mb-1">Lưu ý về định dạng tệp</p>
                     <p class="text-sm text-amber-600 leading-relaxed">
-                        Hệ thống hỗ trợ các định dạng <strong>.pdf</strong>, <strong>.docx</strong>, <strong>.txt</strong> với dung lượng tối đa <strong>20MB</strong> mỗi tệp. Tài liệu sau khi tải lên sẽ trải qua quá trình vector hóa tự động để AI có thể hiểu và trích xuất thông tin chính xác. Thời gian xử lý trung bình từ 1-3 phút tùy vào độ dài văn bản.
+                        Hệ thống hỗ trợ các định dạng <strong>.pdf</strong>, <strong>.docx</strong>, <strong>.txt</strong>
+                        với dung lượng tối đa <strong>20MB</strong> mỗi tệp.
+                        Tài liệu sau khi tải lên sẽ trải qua quá trình vector hóa tự động để AI có thể hiểu và trích xuất thông tin chính xác.
+                        Thời gian xử lý trung bình từ 1-3 phút tùy vào độ dài văn bản.
                     </p>
                 </div>
             </div>
@@ -290,5 +233,47 @@
         <p class="text-xs text-gray-400">&copy; 2026 LD3 AI Chatbot</p>
     </footer>
 
+    <!-- ==================== Upload script (POSTs to /api/documents) ==================== -->
+    <script>
+        (function () {
+            const trigger = document.getElementById('upload-trigger');
+            const input   = document.getElementById('upload-input');
+            if (!trigger || !input) return;
+
+            trigger.addEventListener('click', () => input.click());
+
+            input.addEventListener('change', async () => {
+                const file = input.files && input.files[0];
+                if (!file) return;
+
+                trigger.disabled = true;
+                trigger.innerText = 'Đang tải lên...';
+
+                try {
+                    const fd = new FormData();
+                    fd.append('file', file);
+
+                    const res = await fetch('/api/documents', {
+                        method: 'POST',
+                        body: fd,
+                        credentials: 'same-origin'
+                    });
+
+                    if (!res.ok) {
+                        const txt = await res.text();
+                        alert('Tải lên thất bại: ' + txt);
+                    } else {
+                        // 202 Accepted — row is Pending; reload to see it.
+                        window.location.reload();
+                    }
+                } catch (err) {
+                    alert('Lỗi kết nối: ' + err);
+                } finally {
+                    input.value = '';
+                    trigger.disabled = false;
+                }
+            });
+        })();
+    </script>
 </body>
 </html>

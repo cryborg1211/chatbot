@@ -1,4 +1,5 @@
 @page
+@model chatbot.Pages.Account.RegisterModel
 @{
     Layout = null;
 }
@@ -46,40 +47,47 @@
             </p>
 
             <!-- Form -->
-            <form class="space-y-4">
+            <form method="post" class="space-y-4">
+                @if (!ViewData.ModelState.IsValid && ViewData.ModelState[string.Empty]?.Errors.Count > 0)
+                {
+                    <div asp-validation-summary="ModelOnly"
+                         class="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700"></div>
+                }
 
                 <!-- Full Name -->
                 <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Họ và tên</label>
+                    <label asp-for="Input.FullName" class="block text-sm font-semibold text-gray-700 mb-1.5">Họ và tên</label>
                     <div class="relative">
                         <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
                             <i class="fa-regular fa-user"></i>
                         </span>
-                        <input type="text" placeholder="Nguyễn Văn A"
+                        <input asp-for="Input.FullName" type="text" placeholder="Nguyễn Văn A" autocomplete="name"
                                class="w-full h-11 pl-10 pr-4 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition" />
                     </div>
+                    <span asp-validation-for="Input.FullName" class="text-xs text-red-500 mt-1 block"></span>
                 </div>
 
                 <!-- Official Email -->
                 <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Email công vụ</label>
+                    <label asp-for="Input.Email" class="block text-sm font-semibold text-gray-700 mb-1.5">Email công vụ</label>
                     <div class="relative">
                         <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
                             <i class="fa-regular fa-envelope"></i>
                         </span>
-                        <input type="email" placeholder="ten.nv@@lamdong.gov.vn"
+                        <input asp-for="Input.Email" type="email" placeholder="ten.nv@@lamdong.gov.vn" autocomplete="email"
                                class="w-full h-11 pl-10 pr-4 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition" />
                     </div>
+                    <span asp-validation-for="Input.Email" class="text-xs text-red-500 mt-1 block"></span>
                 </div>
 
                 <!-- Password -->
                 <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Mật khẩu</label>
+                    <label asp-for="Input.Password" class="block text-sm font-semibold text-gray-700 mb-1.5">Mật khẩu</label>
                     <div class="relative">
                         <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
                             <i class="fa-solid fa-shield-halved text-sm"></i>
                         </span>
-                        <input type="password" placeholder="••••••••"
+                        <input asp-for="Input.Password" type="password" placeholder="••••••••" autocomplete="new-password"
                                class="w-full h-11 pl-10 pr-10 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition" />
                         <button type="button"
                                 class="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
@@ -87,16 +95,17 @@
                             <i class="fa-regular fa-eye"></i>
                         </button>
                     </div>
+                    <span asp-validation-for="Input.Password" class="text-xs text-red-500 mt-1 block"></span>
                 </div>
 
                 <!-- Confirm Password -->
                 <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Nhập lại mật khẩu</label>
+                    <label asp-for="Input.ConfirmPassword" class="block text-sm font-semibold text-gray-700 mb-1.5">Nhập lại mật khẩu</label>
                     <div class="relative">
                         <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
                             <i class="fa-solid fa-shield-halved text-sm"></i>
                         </span>
-                        <input type="password" placeholder="••••••••"
+                        <input asp-for="Input.ConfirmPassword" type="password" placeholder="••••••••" autocomplete="new-password"
                                class="w-full h-11 pl-10 pr-10 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition" />
                         <button type="button"
                                 class="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
@@ -104,19 +113,21 @@
                             <i class="fa-regular fa-eye"></i>
                         </button>
                     </div>
+                    <span asp-validation-for="Input.ConfirmPassword" class="text-xs text-red-500 mt-1 block"></span>
                 </div>
 
                 <!-- Department ID (Highlighted Section) -->
                 <div class="pt-1">
-                    <label class="flex items-center gap-1.5 text-sm font-semibold text-blue-500 mb-1.5">
+                    <label asp-for="Input.DepartmentId" class="flex items-center gap-1.5 text-sm font-semibold text-blue-500 mb-1.5">
                         <i class="fa-solid fa-hashtag text-xs"></i>
                         Mã định danh Phòng ban/Đơn vị
                     </label>
-                    <input type="text" placeholder="Nhập mã định danh 8 ký tự" maxlength="8"
+                    <input asp-for="Input.DepartmentId" type="text" placeholder="Nhập mã định danh 8 ký tự" maxlength="8"
                            class="w-full h-11 px-4 bg-blue-50 border border-blue-200 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition" />
                     <p class="text-xs text-gray-400 mt-1.5">
                         <span class="italic">* Vui lòng liên hệ quản trị viên để nhận mã này</span>
                     </p>
+                    <span asp-validation-for="Input.DepartmentId" class="text-xs text-red-500 mt-1 block"></span>
                 </div>
 
                 <!-- Submit Button -->

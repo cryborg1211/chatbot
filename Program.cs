@@ -1,6 +1,11 @@
 using chatbot.Data;
+using chatbot.Infrastructure.AiWorker;
 using chatbot.Infrastructure.Identity;
+using chatbot.Infrastructure.Storage;
 using chatbot.Models;
+using chatbot.Services.Chat;
+using chatbot.Services.Documents;
+using chatbot.Workers;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -62,7 +67,28 @@ builder.Services.ConfigureApplicationCookie(options =>
 });
 
 // ---------------------------------------------------------------------
-//  5. MVC + Razor Pages
+//  5. Storage (blob backend for uploaded documents)
+// ---------------------------------------------------------------------
+builder.Services.Configure<StorageOptions>(
+    builder.Configuration.GetSection(StorageOptions.SectionName));
+builder.Services.AddSingleton<IDocumentStorage, LocalFileSystemStorage>();
+
+// ---------------------------------------------------------------------
+//  6. AI Worker (typed HttpClient → Python FastAPI)
+// ---------------------------------------------------------------------
+builder.Services.Configure<AiWorkerOptions>(
+    builder.Configuration.GetSection(AiWorkerOptions.SectionName));
+builder.Services.AddHttpClient<IAiWorkerClient, AiWorkerClient>();
+
+// ---------------------------------------------------------------------
+//  7. Document orchestrator + background ingestion worker
+// ---------------------------------------------------------------------
+builder.Services.AddScoped<IDocumentService, DocumentService>();
+builder.Services.AddScoped<IChatService,     ChatService>();
+builder.Services.AddHostedService<DocumentIngestionWorker>();
+
+// ---------------------------------------------------------------------
+//  8. MVC + Razor Pages
 // ---------------------------------------------------------------------
 builder.Services.AddRazorPages();
 builder.Services.AddControllersWithViews();
@@ -86,6 +112,7 @@ app.UseAuthentication();   // MUST be before UseAuthorization
 app.UseAuthorization();
 
 app.MapRazorPages();
+app.MapControllers();              // attribute-routed APIs (e.g. /api/documents)
 app.MapDefaultControllerRoute();
 
 app.Run();
