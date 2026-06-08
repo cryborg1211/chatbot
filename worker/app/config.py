@@ -43,6 +43,15 @@ class Settings(BaseSettings):
     # ---- Retrieval ----
     retrieval_top_k: int = 5
 
+    # ---- Redis / arq queue ----
+    redis_host:     str        = "localhost"
+    redis_port:     int        = 6379
+    redis_db:       int        = 0
+    redis_password: str | None = None
+
+    # ---- Temporary upload landing zone (used by the /upload endpoint) ----
+    tmp_uploads_dir: str = "tmp_uploads"
+
     # ---- Logging ----
     log_level: str = "INFO"
 

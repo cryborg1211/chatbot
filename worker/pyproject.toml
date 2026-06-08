@@ -34,6 +34,13 @@ dependencies = [
     # ---- Document parsers ----
     "pypdf>=4.0.0",
     "python-docx>=1.1.0",
+    "mammoth>=1.7.0",                          # DOCX → markdown (preserves tables)
+
+    # ---- Smart chunking ----
+    "langchain-text-splitters>=0.3.0",         # RecursiveCharacterTextSplitter
+
+    # ---- Async job queue ----
+    "arq>=0.26.0",                             # Redis-backed worker queue
 ]
 
 [build-system]

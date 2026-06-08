@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using chatbot.Data;
+using chatbot.Infrastructure.Audit;
 using chatbot.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -21,17 +22,20 @@ public sealed class RegisterModel : PageModel
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly ApplicationDbContext _db;
+    private readonly IAuditLogger _audit;
     private readonly ILogger<RegisterModel> _logger;
 
     public RegisterModel(
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
         ApplicationDbContext db,
+        IAuditLogger audit,
         ILogger<RegisterModel> logger)
     {
         _userManager   = userManager;
         _signInManager = signInManager;
         _db            = db;
+        _audit         = audit;
         _logger        = logger;
     }
 
@@ -115,6 +119,14 @@ public sealed class RegisterModel : PageModel
 
         _logger.LogInformation(
             "User {Email} registered for tenant {Dept}.", user.Email, user.DepartmentId);
+
+        _ = _audit.LogAsync(
+            "auth.register", "auth",
+            overrideUserId:       user.Id,
+            overrideDepartmentId: user.DepartmentId,
+            resourceType:         nameof(ApplicationUser),
+            resourceId:           user.Id,
+            details: new { email = user.Email, departmentId = user.DepartmentId });
 
         // SignInAsync triggers ApplicationUserClaimsPrincipalFactory →
         // cookie now carries department_id + full_name.

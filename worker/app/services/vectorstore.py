@@ -108,18 +108,35 @@ class VectorStore:
 
     def delete_document(self, document_id: str) -> None:
         """Remove every chunk belonging to a document (idempotent)."""
-        self._client.delete(
+        self.delete_by_payload(field="document_id", value=document_id)
+
+    def delete_by_payload(self, field: str, value: str) -> str:
+        """
+        Delete every point whose payload ``[field] == value`` — in a SINGLE
+        Qdrant round trip. The server walks its own indexes to find the
+        matching points; we never enumerate ids client-side.
+
+        Args:
+            field: Payload key (e.g. ``document_id`` or ``original_name``).
+                   Must be one of the indexed keys for fast deletes.
+            value: Exact value to match.
+
+        Returns:
+            Qdrant operation status as a string (e.g. ``"completed"``).
+        """
+        op = self._client.delete(
             collection_name=self._collection,
             points_selector=FilterSelector(
                 filter=Filter(
                     must=[FieldCondition(
-                        key="document_id",
-                        match=MatchValue(value=document_id),
+                        key=field,
+                        match=MatchValue(value=value),
                     )]
                 )
             ),
             wait=True,
         )
+        return str(getattr(op, "status", op))
 
     # ------------------------------------------------------------------
     #  Helpers

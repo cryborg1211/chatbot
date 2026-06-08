@@ -35,6 +35,10 @@ public sealed class IndexModel : PageModel
     public Conversation? CurrentConversation { get; private set; }
     public IReadOnlyList<ChatMessage> Messages { get; private set; } = Array.Empty<ChatMessage>();
 
+    /// <summary>Current user's thumbs vote per assistant message id (if any).</summary>
+    public IReadOnlyDictionary<Guid, FeedbackRating> MyFeedback { get; private set; } =
+        new Dictionary<Guid, FeedbackRating>();
+
     public async Task<IActionResult> OnGetAsync(Guid? id, CancellationToken cancellationToken)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -69,6 +73,20 @@ public sealed class IndexModel : PageModel
                 .Where(m => m.ConversationId == convoId)
                 .OrderBy(m => m.CreatedAt)
                 .ToListAsync(cancellationToken);
+
+            // ---- Preload this user's existing thumbs on assistant messages ----
+            var assistantIds = Messages
+                .Where(m => m.Role == ChatRole.Assistant)
+                .Select(m => m.Id)
+                .ToList();
+
+            if (assistantIds.Count > 0)
+            {
+                MyFeedback = await _db.Feedbacks
+                    .AsNoTracking()
+                    .Where(f => f.UserId == userId && assistantIds.Contains(f.ChatMessageId))
+                    .ToDictionaryAsync(f => f.ChatMessageId, f => f.Rating, cancellationToken);
+            }
         }
 
         return Page();

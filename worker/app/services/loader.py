@@ -44,10 +44,62 @@ def load_documents(file_bytes: bytes, mime_type: str, original_name: str) -> lis
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     ):
         return _load_docx(file_bytes, original_name)
+    
+    if mime_type == "application/msword":
+        return _load_legacy_doc(file_bytes, original_name)
+    
 
     raise LoaderError(f"Unsupported MIME type: {mime_type}")
 
+def _load_legacy_doc(file_bytes: bytes, original_name: str) -> list[Any]:
+    """Read a legacy binary ``.doc`` (pre-2007 OLE format).
 
+    Pipeline:
+        bytes (.doc)  ── LibreOffice headless ──►  .docx  ──►  _load_docx
+
+    Why not call ``mammoth`` directly?  Mammoth only understands the
+    OOXML / docx zip format.  The binary OLE ``.doc`` format produces
+    ``Could not find file 'word/document.xml'`` — silent dead end.
+
+    The on-disk conversion uses two temp dirs; both are wiped in the
+    ``finally`` block on every code path (success, parse error, crash).
+    """
+    import shutil
+    import tempfile
+    from pathlib import Path
+
+    from ..preprocessing.docx_processor import (
+        DocxProcessingError,
+        convert_doc_to_docx,
+    )
+
+    # Suffix MUST be .doc — LibreOffice picks the import filter by ext.
+    src_dir = Path(tempfile.mkdtemp(prefix="ld3_doc_in_"))
+    out_dir: Path | None = None
+    try:
+        # Use a sanitised stem so non-ASCII filenames don't break soffice
+        # (LibreOffice is fussy about filename encoding on Windows).
+        safe_stem = "input"
+        src_path  = src_dir / f"{safe_stem}.doc"
+        src_path.write_bytes(file_bytes)
+
+        try:
+            converted = convert_doc_to_docx(src_path)
+        except DocxProcessingError as exc:
+            raise LoaderError(f"DOC → DOCX conversion failed: {exc}") from exc
+
+        out_dir     = converted.parent
+        docx_bytes  = converted.read_bytes()
+    finally:
+        shutil.rmtree(src_dir, ignore_errors=True)
+        if out_dir is not None:
+            shutil.rmtree(out_dir, ignore_errors=True)
+
+    if not docx_bytes:
+        raise LoaderError("LibreOffice produced an empty .docx — corrupt source?")
+
+    # Hand off to the existing docx loader (tables preserved via mammoth).
+    return _load_docx(docx_bytes, original_name)
 # ---------------------------------------------------------------------
 #  Per-format loaders
 # ---------------------------------------------------------------------

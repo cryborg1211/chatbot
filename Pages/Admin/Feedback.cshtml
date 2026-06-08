@@ -1,7 +1,11 @@
 @page
+@model chatbot.Pages.Admin.FeedbackModel
+@using chatbot.Models
 @{
     ViewData["Title"] = "Phản hồi & Đánh giá";
     ViewData["ActiveNav"] = "Feedback";
+
+    string Truncate(string s, int n) => string.IsNullOrEmpty(s) ? string.Empty : (s.Length <= n ? s : s[..n] + "…");
 }
 
 <!-- Page Header -->
@@ -10,222 +14,129 @@
         <h1 class="text-2xl font-bold text-gray-800">Phản hồi &amp; Đánh giá</h1>
         <p class="text-sm text-gray-500 mt-1">Theo dõi và phân tích chất lượng tương tác giữa người dùng và hệ thống AI.</p>
     </div>
-    <div class="flex items-center gap-3">
+    <form method="get" class="flex items-center gap-3">
         <div class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600">
             <i class="fa-solid fa-filter text-xs text-gray-400"></i>
             <span>Lọc theo:</span>
-            <select class="bg-transparent font-medium text-gray-700 focus:outline-none cursor-pointer">
-                <option>Tất cả</option>
-                <option>Hài lòng</option>
-                <option>Không hài lòng</option>
+            <select name="Filter" onchange="this.form.submit()" class="bg-transparent font-medium text-gray-700 focus:outline-none cursor-pointer">
+                <option value="all"  selected="@(Model.Filter == "all")">Tất cả</option>
+                <option value="up"   selected="@(Model.Filter == "up")">Hài lòng</option>
+                <option value="down" selected="@(Model.Filter == "down")">Không hài lòng</option>
             </select>
         </div>
-        <button class="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
-            Xuất báo cáo
-        </button>
+    </form>
+</div>
+
+<!-- Stats row -->
+<div class="grid grid-cols-3 gap-4 mb-6">
+    <div class="bg-white rounded-lg border border-gray-200 p-5">
+        <div class="flex items-center gap-3 mb-2">
+            <div class="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center">
+                <i class="fa-regular fa-comments text-blue-500"></i>
+            </div>
+            <span class="text-sm text-gray-500">Tổng phản hồi</span>
+        </div>
+        <p class="text-3xl font-bold text-gray-800">@(Model.ThumbsUpCount + Model.ThumbsDownCount)</p>
+    </div>
+    <div class="bg-white rounded-lg border border-gray-200 p-5">
+        <div class="flex items-center gap-3 mb-2">
+            <div class="w-9 h-9 bg-green-50 rounded-lg flex items-center justify-center">
+                <i class="fa-solid fa-thumbs-up text-green-500"></i>
+            </div>
+            <span class="text-sm text-gray-500">Hài lòng</span>
+        </div>
+        <p class="text-3xl font-bold text-gray-800">@Model.ThumbsUpCount</p>
+    </div>
+    <div class="bg-white rounded-lg border border-gray-200 p-5">
+        <div class="flex items-center gap-3 mb-2">
+            <div class="w-9 h-9 bg-red-50 rounded-lg flex items-center justify-center">
+                <i class="fa-solid fa-thumbs-down text-red-500"></i>
+            </div>
+            <span class="text-sm text-gray-500">Không hài lòng</span>
+        </div>
+        <p class="text-3xl font-bold text-gray-800">@Model.ThumbsDownCount</p>
     </div>
 </div>
 
-<!-- Feedback Table -->
+<!-- Feedback table -->
 <div class="bg-white rounded-lg border border-gray-200">
     <table class="w-full">
         <thead>
             <tr class="border-b border-gray-200 bg-gray-50/50">
                 <th class="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3 w-48">Người dùng</th>
-                <th class="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3 w-56">Câu hỏi của user</th>
+                <th class="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3 w-56">Câu hỏi</th>
                 <th class="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">Câu trả lời của AI</th>
                 <th class="text-center text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3 w-36">Đánh giá</th>
                 <th class="text-right text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3 w-32">Thời gian</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
-            <!-- Row 1 -->
-            <tr class="hover:bg-gray-50/50 transition align-top">
-                <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                            <i class="fa-solid fa-user text-blue-600 text-xs"></i>
+            @if (Model.Items.Count == 0)
+            {
+                <tr><td colspan="5" class="px-6 py-12 text-center text-sm text-gray-400">Chưa có phản hồi nào.</td></tr>
+            }
+            @foreach (var f in Model.Items)
+            {
+                var up = f.Rating == FeedbackRating.ThumbsUp;
+                <tr class="hover:bg-gray-50/50 transition align-top">
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                                <i class="fa-solid fa-user text-blue-600 text-xs"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-semibold text-gray-800">@f.UserFullName</p>
+                                <p class="text-xs text-gray-400">@f.DepartmentId</p>
+                            </div>
                         </div>
-                        <div>
-                            <p class="text-sm font-semibold text-gray-800">Nguyễn Văn A</p>
-                            <p class="text-xs text-gray-400">Chuyên viên Sở Tư pháp</p>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="flex gap-2">
+                            <i class="fa-regular fa-comment text-gray-300 mt-0.5 shrink-0"></i>
+                            <p class="text-sm text-gray-600 italic" title="@f.Question">"@Truncate(f.Question, 120)"</p>
                         </div>
-                    </div>
-                </td>
-                <td class="px-6 py-4">
-                    <div class="flex gap-2">
-                        <i class="fa-regular fa-comment text-gray-300 mt-0.5 shrink-0"></i>
-                        <p class="text-sm text-gray-600 italic">"Thủ tục cấp lại giấy phép dụng nhà ở riêng lẻ tại Lâm Đồng bao gồm những bước"</p>
-                    </div>
-                </td>
-                <td class="px-6 py-4">
-                    <div class="bg-blue-50/60 border border-blue-100 rounded-lg p-3 text-sm text-gray-700 leading-relaxed">
-                        Chào bạn, theo quy định hiện hành tại Lâm Đồng, thủ tục bao gồm: 1. Nộp hồ sơ tại Trung tâm Phục vụ Hành chính công; 2. Cơ quan chức năng thẩm định trong 15 ngày làm việc; 3. Nhận kết quả.
-                    </div>
-                </td>
-                <td class="px-4 py-4 text-center">
-                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 rounded-full text-xs font-semibold">
-                        <i class="fa-solid fa-thumbs-up text-[10px]"></i> HÀI LÒNG
-                    </span>
-                </td>
-                <td class="px-6 py-4 text-right">
-                    <span class="text-sm text-gray-400 whitespace-nowrap">
-                        <i class="fa-regular fa-clock text-xs mr-1"></i>5 phút trước
-                    </span>
-                </td>
-            </tr>
-            <!-- Row 2 -->
-            <tr class="hover:bg-gray-50/50 transition align-top">
-                <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-full bg-pink-100 flex items-center justify-center shrink-0">
-                            <i class="fa-solid fa-user text-pink-600 text-xs"></i>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="bg-blue-50/60 border border-blue-100 rounded-lg p-3 text-sm text-gray-700 leading-relaxed" title="@f.Answer">
+                            @Truncate(f.Answer, 240)
                         </div>
-                        <div>
-                            <p class="text-sm font-semibold text-gray-800">Trần Thị B</p>
-                            <p class="text-xs text-gray-400">Người dân TP. Đà Lạt</p>
-                        </div>
-                    </div>
-                </td>
-                <td class="px-6 py-4">
-                    <div class="flex gap-2">
-                        <i class="fa-regular fa-comment text-gray-300 mt-0.5 shrink-0"></i>
-                        <p class="text-sm text-gray-600 italic">"Lịch tiêm chủng mở rộng tháng 10 năm 2024 tại Phường 9 như thế nào?"</p>
-                    </div>
-                </td>
-                <td class="px-6 py-4">
-                    <div class="bg-blue-50/60 border border-blue-100 rounded-lg p-3 text-sm text-gray-700 leading-relaxed">
-                        Rất tiếc, tôi chưa có đủ dữ liệu cụ thể về lịch tiêm chủng chi tiết của Phường 9 trong tháng 10/2024. Vui lòng liên hệ Trạm Y tế phường hoặc tổng đài 1022 để biết thông tin chính xác nhất.
-                    </div>
-                </td>
-                <td class="px-4 py-4 text-center">
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-red-50 text-red-600 rounded-full text-xs font-semibold">
-                        <i class="fa-solid fa-thumbs-down text-[10px]"></i> KHÔNG HÀI LÒNG
-                    </span>
-                </td>
-                <td class="px-6 py-4 text-right">
-                    <span class="text-sm text-gray-400 whitespace-nowrap">
-                        <i class="fa-regular fa-clock text-xs mr-1"></i>12 phút trước
-                    </span>
-                </td>
-            </tr>
-            <!-- Row 3 -->
-            <tr class="hover:bg-gray-50/50 transition align-top">
-                <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                            <i class="fa-solid fa-user text-green-600 text-xs"></i>
-                        </div>
-                        <div>
-                            <p class="text-sm font-semibold text-gray-800">Lê Hoàng C</p>
-                            <p class="text-xs text-gray-400">Cán bộ UBND Huyện Đức Trọng</p>
-                        </div>
-                    </div>
-                </td>
-                <td class="px-6 py-4">
-                    <div class="flex gap-2">
-                        <i class="fa-regular fa-comment text-gray-300 mt-0.5 shrink-0"></i>
-                        <p class="text-sm text-gray-600 italic">"Hướng dẫn quy trình xử lý văn bản đến trên hệ thống iOffice mới nhất."</p>
-                    </div>
-                </td>
-                <td class="px-6 py-4">
-                    <div class="bg-blue-50/60 border border-blue-100 rounded-lg p-3 text-sm text-gray-700 leading-relaxed">
-                        Quy trình bao gồm: Tiếp nhận &rarr; Phân loại &rarr; Văn thư trình lãnh đạo &rarr; Lãnh đạo bút phê chỉ đạo &rarr; Chuyên viên xử lý &rarr; Hoàn thành. Bạn có thể xem video hướng dẫn chi tiết tại mục Hỗ trợ của iOffice.
-                    </div>
-                </td>
-                <td class="px-4 py-4 text-center">
-                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 rounded-full text-xs font-semibold">
-                        <i class="fa-solid fa-thumbs-up text-[10px]"></i> HÀI LÒNG
-                    </span>
-                </td>
-                <td class="px-6 py-4 text-right">
-                    <span class="text-sm text-gray-400 whitespace-nowrap">
-                        <i class="fa-regular fa-clock text-xs mr-1"></i>45 phút trước
-                    </span>
-                </td>
-            </tr>
-            <!-- Row 4 -->
-            <tr class="hover:bg-gray-50/50 transition align-top">
-                <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-                            <i class="fa-solid fa-user text-amber-600 text-xs"></i>
-                        </div>
-                        <div>
-                            <p class="text-sm font-semibold text-gray-800">Phạm Minh D</p>
-                            <p class="text-xs text-gray-400">Doanh nghiệp Xây dựng Lam Sơn</p>
-                        </div>
-                    </div>
-                </td>
-                <td class="px-6 py-4">
-                    <div class="flex gap-2">
-                        <i class="fa-regular fa-comment text-gray-300 mt-0.5 shrink-0"></i>
-                        <p class="text-sm text-gray-600 italic">"Tôi muốn tra cứu tình trạng hồ sơ 000.00.12.H 24-240915-0001."</p>
-                    </div>
-                </td>
-                <td class="px-6 py-4">
-                    <div class="bg-blue-50/60 border border-blue-100 rounded-lg p-3 text-sm text-gray-700 leading-relaxed">
-                        Hồ sơ của bạn hiện đang ở bước "Thẩm định nội dung" tại Sở Tài nguyên và Môi trường. Thời gian dự kiến trả kết quả là ngày 25/10/2024.
-                    </div>
-                </td>
-                <td class="px-4 py-4 text-center">
-                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 rounded-full text-xs font-semibold">
-                        <i class="fa-solid fa-thumbs-up text-[10px]"></i> HÀI LÒNG
-                    </span>
-                </td>
-                <td class="px-6 py-4 text-right">
-                    <span class="text-sm text-gray-400 whitespace-nowrap">
-                        <i class="fa-regular fa-clock text-xs mr-1"></i>1 giờ trước
-                    </span>
-                </td>
-            </tr>
-            <!-- Row 5 -->
-            <tr class="hover:bg-gray-50/50 transition align-top">
-                <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-full bg-violet-100 flex items-center justify-center shrink-0">
-                            <i class="fa-solid fa-user text-violet-600 text-xs"></i>
-                        </div>
-                        <div>
-                            <p class="text-sm font-semibold text-gray-800">Hoàng Anh E</p>
-                            <p class="text-xs text-gray-400">Phóng viên Báo Lâm Đồng</p>
-                        </div>
-                    </div>
-                </td>
-                <td class="px-6 py-4">
-                    <div class="flex gap-2">
-                        <i class="fa-regular fa-comment text-gray-300 mt-0.5 shrink-0"></i>
-                        <p class="text-sm text-gray-600 italic">"Số liệu tăng trưởng kinh tế của tỉnh quý 3 năm 2024 so với cùng kỳ năm ngoài."</p>
-                    </div>
-                </td>
-                <td class="px-6 py-4">
-                    <div class="bg-blue-50/60 border border-blue-100 rounded-lg p-3 text-sm text-gray-700 leading-relaxed">
-                        Số liệu chính thức chưa được công bố công khai rộng rãi trên hệ thống nội bộ này. Vui lòng tham khảo báo cáo của Cục Thống kê tỉnh Lâm Đồng.
-                    </div>
-                </td>
-                <td class="px-4 py-4 text-center">
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-red-50 text-red-600 rounded-full text-xs font-semibold">
-                        <i class="fa-solid fa-thumbs-down text-[10px]"></i> KHÔNG HÀI LÒNG
-                    </span>
-                </td>
-                <td class="px-6 py-4 text-right">
-                    <span class="text-sm text-gray-400 whitespace-nowrap">
-                        <i class="fa-regular fa-clock text-xs mr-1"></i>3 giờ trước
-                    </span>
-                </td>
-            </tr>
+                    </td>
+                    <td class="px-4 py-4 text-center">
+                        @if (up)
+                        {
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 rounded-full text-xs font-semibold">
+                                <i class="fa-solid fa-thumbs-up text-[10px]"></i> HÀI LÒNG
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-red-50 text-red-600 rounded-full text-xs font-semibold">
+                                <i class="fa-solid fa-thumbs-down text-[10px]"></i> KHÔNG HÀI LÒNG
+                            </span>
+                        }
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                        <span class="text-sm text-gray-400 whitespace-nowrap">
+                            <i class="fa-regular fa-clock text-xs mr-1"></i>@f.At.ToLocalTime().ToString("dd/MM HH:mm")
+                        </span>
+                    </td>
+                </tr>
+            }
         </tbody>
     </table>
 
-    <!-- Table Footer -->
     <div class="flex items-center justify-between px-6 py-4 border-t border-gray-200">
-        <p class="text-sm text-gray-500">Hiển thị 5 trên 5 phản hồi</p>
+        <p class="text-sm text-gray-500">Trang @Model.PageNumber / @Model.TotalPages · @Model.TotalCount mục</p>
+        @{
+            var prev = Math.Max(1, Model.PageNumber - 1);
+            var next = Math.Min(Model.TotalPages, Model.PageNumber + 1);
+        }
         <div class="flex items-center gap-1">
-            <button class="px-3 py-1.5 text-sm text-gray-400 rounded-lg hover:bg-gray-100 transition">Trước</button>
-            <button class="w-8 h-8 flex items-center justify-center rounded-lg text-sm bg-blue-600 text-white font-medium">1</button>
-            <button class="w-8 h-8 flex items-center justify-center rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition">2</button>
-            <button class="w-8 h-8 flex items-center justify-center rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition">3</button>
-            <button class="px-3 py-1.5 text-sm text-gray-600 rounded-lg border border-gray-300 hover:bg-gray-50 transition">Tiếp</button>
+            <a href="?Filter=@Model.Filter&PageNumber=@prev"
+               class="px-3 py-1.5 text-sm text-gray-600 rounded-lg border border-gray-300 hover:bg-gray-50 transition">Trước</a>
+            <span class="w-8 h-8 flex items-center justify-center rounded-lg text-sm bg-blue-600 text-white font-medium">@Model.PageNumber</span>
+            <a href="?Filter=@Model.Filter&PageNumber=@next"
+               class="px-3 py-1.5 text-sm text-gray-600 rounded-lg border border-gray-300 hover:bg-gray-50 transition">Sau</a>
         </div>
     </div>
 </div>

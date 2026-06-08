@@ -14,13 +14,17 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
+import os
 from typing import AsyncIterator
 
 from fastapi import FastAPI
 from qdrant_client import QdrantClient
 
-from .api import health, ingest, query
+from arq.connections import create_pool
+
+from .api import documents, health, ingest, query
 from .config import get_settings
+from .queue_worker import build_redis_settings
 from .services.chunker import Chunker
 from .services.embedder import Embedder
 from .services.llm_router import LlmRouter
@@ -30,9 +34,12 @@ from .services.vectorstore import VectorStore
 
 logger = logging.getLogger(__name__)
 
+TMP_UPLOADS_DIR = "tmp_uploads"
+os.makedirs(TMP_UPLOADS_DIR, exist_ok=True)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    
     settings = get_settings()
 
     # ---- Logging ----
@@ -79,11 +86,27 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.llm             = llm_router
     app.state.retrieval_top_k = settings.retrieval_top_k
 
+    # ---- arq Redis pool (used by /api/documents/upload) ----
+    arq_pool = None
+    try:
+        arq_pool = await create_pool(build_redis_settings(settings))
+        app.state.arq_pool = arq_pool
+        logger.info("arq_pool_ready redis=%s:%s", settings.redis_host, settings.redis_port)
+    except Exception:                                                  # noqa: BLE001
+        # Worker still serves /health, /api/ingest, /api/query without the queue.
+        app.state.arq_pool = None
+        logger.exception("arq_pool_init_failed — /api/documents/upload disabled")
+
     logger.info("worker_ready")
     try:
         yield
     finally:
         logger.info("worker_shutting_down")
+        if arq_pool is not None:
+            try:
+                await arq_pool.close()
+            except Exception:                                          # noqa: BLE001
+                logger.warning("arq_pool_close_failed")
         qdrant.close()
 
 
@@ -102,5 +125,6 @@ app = FastAPI(
 # know the API prefix. Business routes are namespaced under /api to match
 # the .NET gateway's `AiWorker:BaseUrl` (= "http://localhost:8000/api").
 app.include_router(health.router)
-app.include_router(ingest.router, prefix="/api")
-app.include_router(query.router,  prefix="/api")
+app.include_router(ingest.router,    prefix="/api")
+app.include_router(query.router,     prefix="/api")
+app.include_router(documents.router, prefix="/api")    # /api/documents/upload + /api/documents/delete

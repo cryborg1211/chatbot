@@ -3,6 +3,7 @@ using System.Text.Json;
 using chatbot.Data;
 using chatbot.Infrastructure.AiWorker;
 using chatbot.Infrastructure.AiWorker.Contracts;
+using chatbot.Infrastructure.Audit;
 using chatbot.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -20,15 +21,18 @@ public sealed class ChatService : IChatService
 
     private readonly ApplicationDbContext _db;
     private readonly IAiWorkerClient _worker;
+    private readonly IAuditLogger _audit;
     private readonly ILogger<ChatService> _logger;
 
     public ChatService(
         ApplicationDbContext db,
         IAiWorkerClient worker,
+        IAuditLogger audit,
         ILogger<ChatService> logger)
     {
         _db     = db;
         _worker = worker;
+        _audit  = audit;
         _logger = logger;
     }
 
@@ -46,6 +50,7 @@ public sealed class ChatService : IChatService
         ArgumentException.ThrowIfNullOrWhiteSpace(userId);
 
         Conversation conversation;
+        bool isNew = false;
         if (conversationId is Guid existingId)
         {
             conversation = await _db.Conversations
@@ -66,6 +71,7 @@ public sealed class ChatService : IChatService
                 UpdatedAt = DateTime.UtcNow,
             };
             _db.Conversations.Add(conversation);
+            isNew = true;
         }
 
         // Persist user message into the conversation.
@@ -81,6 +87,15 @@ public sealed class ChatService : IChatService
 
         conversation.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
+
+        if (isNew)
+        {
+            _ = _audit.LogAsync(
+                "chat.start", "chat",
+                resourceType: nameof(Conversation),
+                resourceId:   conversation.Id.ToString(),
+                details: new { conversationId = conversation.Id });
+        }
 
         return conversation;
     }
@@ -219,6 +234,25 @@ public sealed class ChatService : IChatService
             _logger.LogInformation(
                 "chat_reply_saved conv={ConvId} chars={Chars} sources={N} finish={Reason}",
                 conversation.Id, fullReply.Length, sourceDocumentIds.Count, finishReason);
+
+            // ---- Audit: chat.message (success) or chat.error ----
+            var ok = finishReason != "error";
+            _ = _audit.LogAsync(
+                ok ? "chat.message" : "chat.error",
+                "chat",
+                ok ? LogSeverity.Info : LogSeverity.Error,
+                resourceType: nameof(ChatMessage),
+                resourceId:   assistant.Id.ToString(),
+                overrideUserId: conversation.UserId,
+                details: new
+                {
+                    conversationId = conversation.Id,
+                    chatMessageId  = assistant.Id,
+                    latencyMs      = latencyMs,
+                    chunkCount     = sourceDocumentIds.Count,
+                    finishReason   = finishReason,
+                },
+                success: ok);
         }
         catch (Exception ex)
         {

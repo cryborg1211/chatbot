@@ -39,7 +39,7 @@ class Retriever:
         self,
         query_vector: list[float],
         department_id: str,
-        top_k: int = 5,
+        top_k: int = 10,
     ) -> list[RetrievedSource]:
         """Returns the top-k chunks scoped to the given department."""
         if not department_id:

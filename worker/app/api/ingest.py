@@ -11,6 +11,7 @@ with a meaningful ``error_code`` / ``message``.
 from __future__ import annotations
 
 import logging
+import os
 import time
 import uuid
 from typing import Annotated
@@ -31,9 +32,19 @@ router = APIRouter(tags=["ingest"], dependencies=[Depends(require_api_key)])
 
 ALLOWED_MIME_TYPES = {
     "application/pdf",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",  # .docx
+    "application/msword",                                                        # .doc (legacy)
     "text/plain",
+    # Browsers sometimes can't sniff Office files and send these generic types —
+    # the loader checks the filename extension separately, so it's safe to allow.
+    "application/octet-stream",
+    "",
 }
+    
+print(f"DEBUG: File path is {os.path.abspath(__file__)}")
+print(f"DEBUG: ALLOWED_MIME_TYPES = {ALLOWED_MIME_TYPES}")
+# File extensions accepted as a fallback when the MIME type is generic or empty.
+ALLOWED_EXTENSIONS = {".pdf", ".docx", ".doc", ".txt"}
 
 # Defensive cap — the .NET side enforces 20 MB already, but be safe.
 MAX_BYTES = 25 * 1024 * 1024
@@ -68,8 +79,13 @@ async def ingest_document(
         return _failed(document_id, "INVALID_DOCUMENT_ID",
                        "document_id is not a valid UUID.", elapsed_ms())
 
-    # ---- 2. Validate MIME type ----
-    if mime_type not in ALLOWED_MIME_TYPES:
+    # ---- 2. Validate MIME type (with filename-extension fallback) ----
+    # Some browsers can't sniff Office files and send generic / empty MIME
+    # types. The real format check happens inside the loader anyway, so we
+    # accept anything whose filename extension is on the allowlist.
+    from pathlib import Path as _Path
+    ext = _Path(original_name).suffix.lower()
+    if mime_type not in ALLOWED_MIME_TYPES and ext not in ALLOWED_EXTENSIONS:
         return _failed(document_id, "UNSUPPORTED_MIME_TYPE",
                        f"MIME type '{mime_type}' not allowed.", elapsed_ms())
 

@@ -21,6 +21,7 @@ public sealed class AiWorkerClient : IAiWorkerClient
     private const string ApiKeyHeader = "X-Worker-Api-Key";
     private const string IngestPath   = "ingest";
     private const string QueryPath    = "query";
+    private const string DeletePath   = "documents/delete";
 
     /// <summary>
     /// Shared JSON options. snake_case to match Python's Pydantic models,
@@ -118,6 +119,48 @@ public sealed class AiWorkerClient : IAiWorkerClient
                 (int)response.StatusCode, body);
             throw new AiWorkerException(
                 $"AI worker returned HTTP {(int)response.StatusCode}: {body}");
+        }
+    }
+
+    // ==================================================================
+    //  Delete (unary, no body)
+    // ==================================================================
+
+    public async Task DeleteDocumentAsync(
+        Guid documentId,
+        CancellationToken cancellationToken = default)
+    {
+        if (documentId == Guid.Empty)
+            throw new ArgumentException("documentId must be non-empty.", nameof(documentId));
+
+        var url = $"{DeletePath}?document_id={Uri.EscapeDataString(documentId.ToString())}";
+
+        HttpResponseMessage response;
+        try
+        {
+            response = await _http.DeleteAsync(url, cancellationToken);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "AI worker unreachable at {BaseUrl} (delete)", _http.BaseAddress);
+            throw new AiWorkerException("AI worker is unreachable.", ex);
+        }
+        catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogError(ex, "AI worker timed out (delete) after {Seconds}s", _options.TimeoutSeconds);
+            throw new AiWorkerException("AI worker timed out.", ex);
+        }
+
+        using (response)
+        {
+            if (response.IsSuccessStatusCode) return;
+
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            _logger.LogError(
+                "AI worker /documents/delete returned {Status}: {Body}",
+                (int)response.StatusCode, body);
+            throw new AiWorkerException(
+                $"AI worker delete returned HTTP {(int)response.StatusCode}: {body}");
         }
     }
 

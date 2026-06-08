@@ -36,6 +36,16 @@ public interface IAiWorkerClient
     IAsyncEnumerable<QueryEvent> QueryAsync(
         QueryRequest request,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Wipe every Qdrant chunk belonging to a single document — one server-side
+    /// filter delete via <c>DELETE /api/documents/delete?document_id=…</c>.
+    /// Idempotent: deleting a non-existent document is a no-op.
+    /// Throws <see cref="AiWorkerException"/> on transport / 5xx failure.
+    /// </summary>
+    Task DeleteDocumentAsync(
+        Guid documentId,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>Thrown when the worker is unreachable or returns an unparseable response.</summary>

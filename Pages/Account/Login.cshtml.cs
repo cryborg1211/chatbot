@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using chatbot.Infrastructure.Audit;
 using chatbot.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -16,13 +17,16 @@ namespace chatbot.Pages.Account;
 public sealed class LoginModel : PageModel
 {
     private readonly SignInManager<ApplicationUser> _signInManager;
+    private readonly IAuditLogger _audit;
     private readonly ILogger<LoginModel> _logger;
 
     public LoginModel(
         SignInManager<ApplicationUser> signInManager,
+        IAuditLogger audit,
         ILogger<LoginModel> logger)
     {
         _signInManager = signInManager;
+        _audit         = audit;
         _logger        = logger;
     }
 
@@ -68,21 +72,33 @@ public sealed class LoginModel : PageModel
         if (result.Succeeded)
         {
             _logger.LogInformation("User {Email} signed in.", Input.Email);
+            var user = await _signInManager.UserManager.FindByEmailAsync(Input.Email);
+            _ = _audit.LogAsync(
+                "auth.login", "auth",
+                overrideUserId:       user?.Id,
+                overrideDepartmentId: user?.DepartmentId,
+                details: new { email = Input.Email });
             return LocalRedirect(ReturnUrl ?? "/Chat");
         }
 
         if (result.IsLockedOut)
         {
+            _ = _audit.LogAsync("auth.login_failed", "auth", LogSeverity.Warn,
+                details: new { email = Input.Email, reason = "locked_out" }, success: false);
             ModelState.AddModelError(string.Empty, "Tài khoản đã bị khóa tạm thời.");
             return Page();
         }
 
         if (result.IsNotAllowed)
         {
+            _ = _audit.LogAsync("auth.login_failed", "auth", LogSeverity.Warn,
+                details: new { email = Input.Email, reason = "not_allowed" }, success: false);
             ModelState.AddModelError(string.Empty, "Tài khoản chưa được phép đăng nhập.");
             return Page();
         }
 
+        _ = _audit.LogAsync("auth.login_failed", "auth", LogSeverity.Warn,
+            details: new { email = Input.Email, reason = "wrong_password" }, success: false);
         ModelState.AddModelError(string.Empty, "Email hoặc mật khẩu không đúng.");
         return Page();
     }

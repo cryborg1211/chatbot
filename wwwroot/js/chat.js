@@ -69,8 +69,13 @@
 
             await consumeSse(response, {
                 onSources: (docs)   => renderSources(assistant.sourcesEl, docs),
-                onToken:   (chunk)  => { removeTyping(assistant); assistant.textEl.textContent += chunk; scrollToBottom(); },
-                onDone:    (info)   => { removeTyping(assistant); if (info.finish_reason === "error") showAssistantError(assistant, "Có lỗi khi tạo trả lời."); },
+                onToken:   (chunk)  => { removeTyping(assistant); feedThinkAware(assistant, chunk); scrollToBottom(); },
+                onDone:    (info)   => {
+                    removeTyping(assistant);
+                    flushThinkAware(assistant);
+                    if (info.finish_reason === "error")
+                        showAssistantError(assistant, "Có lỗi khi tạo trả lời.");
+                },
                 onError:   (msg)    => showAssistantError(assistant, msg || "Lỗi không xác định."),
             });
         } catch (err) {
@@ -181,7 +186,8 @@
             <div class="flex-1">
                 <div class="bg-white border border-gray-200 rounded-xl rounded-tl-sm p-4 shadow-sm">
                     <div data-sources class="hidden flex-wrap gap-1.5 mb-3"></div>
-                    <p data-text class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap"></p>
+                    <div data-think class="hidden text-xs text-gray-400 italic opacity-75 mb-3 pl-2 border-l-2 border-gray-200 whitespace-pre-wrap"></div>
+                    <div data-answer class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap"></div>
                     <span data-typing class="inline-block w-2 h-2 rounded-full bg-blue-400 animate-pulse ml-0.5 align-middle"></span>
                 </div>
                 <p class="text-xs text-gray-400 mt-2 flex items-center gap-1">
@@ -192,9 +198,75 @@
         scrollToBottom();
         return {
             sourcesEl: wrap.querySelector("[data-sources]"),
-            textEl:    wrap.querySelector("[data-text]"),
+            thinkEl:   wrap.querySelector("[data-think]"),
+            answerEl:  wrap.querySelector("[data-answer]"),
             typingEl:  wrap.querySelector("[data-typing]"),
+            // CoT parse state — Gemma4 wraps reasoning in <think>...</think>.
+            parseState: { mode: "answer", pending: "" },
         };
+    }
+
+    // -----------------------------------------------------------------
+    //  CoT think-tag parser (gemma4:e2b emits <think>...</think> blocks).
+    //  Incremental + XSS-safe (textContent only, never innerHTML).
+    // -----------------------------------------------------------------
+    const THINK_OPEN  = "<think>";
+    const THINK_CLOSE = "</think>";
+
+    function feedThinkAware(assistant, chunk) {
+        const state = assistant.parseState;
+        state.pending += chunk;
+
+        // Loop because one chunk may close one block and open another.
+        while (state.pending.length > 0) {
+            const tag      = state.mode === "answer" ? THINK_OPEN : THINK_CLOSE;
+            const targetEl = state.mode === "answer" ? assistant.answerEl : assistant.thinkEl;
+
+            const idx = state.pending.indexOf(tag);
+            if (idx !== -1) {
+                // Emit chars before the tag, then consume the tag and flip mode.
+                if (idx > 0) appendTextNode(targetEl, state.pending.slice(0, idx));
+                state.pending = state.pending.slice(idx + tag.length);
+                state.mode    = state.mode === "answer" ? "think" : "answer";
+                continue;
+            }
+
+            // No full tag in buffer. Emit everything *except* any suffix that
+            // could be the START of the tag we're hunting for.
+            const hold     = partialTagSuffixLen(state.pending, tag);
+            const emitLen  = state.pending.length - hold;
+            if (emitLen > 0) appendTextNode(targetEl, state.pending.slice(0, emitLen));
+            state.pending = state.pending.slice(emitLen);
+            break;
+        }
+    }
+
+    function flushThinkAware(assistant) {
+        const state = assistant.parseState;
+        if (state.pending.length > 0) {
+            const el = state.mode === "think" ? assistant.thinkEl : assistant.answerEl;
+            appendTextNode(el, state.pending);
+            state.pending = "";
+        }
+    }
+
+    /**
+     * If `buf` ends with a prefix of `tag`, return that prefix's length.
+     * Lets us hold those chars back so a tag split across two chunks
+     * (e.g. "<thi" + "nk>") is still recognised.
+     */
+    function partialTagSuffixLen(buf, tag) {
+        const maxHold = Math.min(buf.length, tag.length - 1);
+        for (let hold = maxHold; hold > 0; hold--) {
+            if (tag.startsWith(buf.slice(buf.length - hold))) return hold;
+        }
+        return 0;
+    }
+
+    function appendTextNode(el, text) {
+        if (!text) return;
+        el.appendChild(document.createTextNode(text));
+        if (el.classList.contains("hidden")) el.classList.remove("hidden");
     }
 
     function renderSources(container, docs) {
@@ -228,12 +300,11 @@
 
     function showAssistantError(assistant, message) {
         removeTyping(assistant);
-        assistant.textEl.classList.add("text-red-600");
-        if (!assistant.textEl.textContent) {
-            assistant.textEl.textContent = message;
-        } else {
-            assistant.textEl.textContent += `\n\n⚠ ${message}`;
-        }
+        flushThinkAware(assistant);
+        const el = assistant.answerEl;
+        el.classList.add("text-red-600");
+        const prefix = el.textContent ? "\n\n⚠ " : "";
+        el.appendChild(document.createTextNode(prefix + message));
         scrollToBottom();
     }
 
@@ -260,4 +331,59 @@
 
     // Scroll to bottom on initial page load (so the latest message is visible).
     scrollToBottom();
+
+    // -----------------------------------------------------------------
+    //  Thumbs feedback (server-rendered assistant messages only).
+    //  Live-streamed messages get thumbs after a page refresh — see
+    //  PROJECT_MASTER_PLAN.md §4.1 v1 limitation.
+    // -----------------------------------------------------------------
+    document.querySelectorAll("[data-thumb]").forEach((btn) => {
+        btn.addEventListener("click", () => sendFeedback(btn));
+    });
+
+    async function sendFeedback(clickedBtn) {
+        const messageId = clickedBtn.dataset.messageId;
+        const rating    = parseInt(clickedBtn.dataset.rating, 10);
+        if (!messageId || (rating !== 1 && rating !== -1)) return;
+
+        const group = clickedBtn.parentElement;
+        // Optimistic: lock both buttons while in flight
+        group.querySelectorAll("[data-thumb]").forEach((b) => (b.disabled = true));
+
+        try {
+            const r = await fetch("/api/feedback", {
+                method:      "POST",
+                headers:     { "Content-Type": "application/json" },
+                body:        JSON.stringify({ chatMessageId: messageId, rating }),
+                credentials: "same-origin",
+            });
+
+            if (r.status === 204) {
+                applyFeedbackUi(group, rating);
+            } else {
+                console.warn("feedback failed", r.status, await r.text().catch(() => ""));
+            }
+        } catch (err) {
+            console.error("feedback fetch error", err);
+        } finally {
+            group.querySelectorAll("[data-thumb]").forEach((b) => (b.disabled = false));
+        }
+    }
+
+    function applyFeedbackUi(group, rating) {
+        group.querySelectorAll("[data-thumb]").forEach((b) => {
+            const isActive = parseInt(b.dataset.rating, 10) === rating;
+            const isUp     = parseInt(b.dataset.rating, 10) === 1;
+
+            // Reset
+            b.classList.remove("text-blue-600", "bg-blue-50", "text-red-500", "bg-red-50", "text-gray-400");
+
+            if (isActive) {
+                if (isUp) b.classList.add("text-blue-600", "bg-blue-50");
+                else      b.classList.add("text-red-500",  "bg-red-50");
+            } else {
+                b.classList.add("text-gray-400");
+            }
+        });
+    }
 })();

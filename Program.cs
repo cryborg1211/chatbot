@@ -1,5 +1,8 @@
 using chatbot.Data;
+using chatbot.Hubs;
 using chatbot.Infrastructure.AiWorker;
+using chatbot.Infrastructure.Audit;
+using chatbot.Infrastructure.Authorization;
 using chatbot.Infrastructure.Identity;
 using chatbot.Infrastructure.Storage;
 using chatbot.Models;
@@ -88,10 +91,27 @@ builder.Services.AddScoped<IChatService,     ChatService>();
 builder.Services.AddHostedService<DocumentIngestionWorker>();
 
 // ---------------------------------------------------------------------
-//  8. MVC + Razor Pages
+//  8. Audit (see audit_system.md §5)
+// ---------------------------------------------------------------------
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IAuditLogger, AuditLogger>();
+
+// ---------------------------------------------------------------------
+//  Authorization policies + role seeder
+// ---------------------------------------------------------------------
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(AuthorizationPolicies.RequireAdmin,
+        policy => policy.RequireRole(Roles.Admin));
+});
+builder.Services.AddHostedService<RoleSeeder>();
+
+// ---------------------------------------------------------------------
+//  9. MVC + Razor Pages
 // ---------------------------------------------------------------------
 builder.Services.AddRazorPages();
 builder.Services.AddControllersWithViews();
+builder.Services.AddSignalR();
 
 var app = builder.Build();
 
@@ -114,5 +134,27 @@ app.UseAuthorization();
 app.MapRazorPages();
 app.MapControllers();              // attribute-routed APIs (e.g. /api/documents)
 app.MapDefaultControllerRoute();
+app.MapHub<DocumentHub>("/hubs/document");
+
+// ---------------------------------------------------------------------
+//  Lifecycle audit (system.startup / system.shutdown)
+// ---------------------------------------------------------------------
+app.Lifetime.ApplicationStarted.Register(() =>
+{
+    _ = Task.Run(async () =>
+    {
+        using var scope = app.Services.CreateScope();
+        var audit = scope.ServiceProvider.GetRequiredService<IAuditLogger>();
+        await audit.LogAsync("system.startup", "sys",
+            details: new { version = "0.1.0" });
+    });
+});
+
+app.Lifetime.ApplicationStopped.Register(() =>
+{
+    using var scope = app.Services.CreateScope();
+    var audit = scope.ServiceProvider.GetRequiredService<IAuditLogger>();
+    audit.LogAsync("system.shutdown", "sys").GetAwaiter().GetResult();
+});
 
 app.Run();

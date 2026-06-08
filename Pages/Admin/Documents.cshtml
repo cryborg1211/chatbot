@@ -75,9 +75,9 @@
                     <i class="fa-solid fa-plus text-xs"></i>
                     Tải lên tài liệu mới
                 </button>
-                <input id="upload-input" type="file"
-                       accept="application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
-                       class="hidden" />
+                <input id="upload-input" type="file" multiple
+                    accept="application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,text/plain"
+                    class="hidden" />
             </div>
 
             <!-- Stats Cards -->
@@ -165,7 +165,7 @@
                             var fileIcon = FileIcon(doc.MimeType);
                             var chip     = StatusChip(doc.Status);
                             var rowBg    = doc.Status == DocumentStatus.Failed ? "bg-red-50/30" : string.Empty;
-                            <tr class="hover:bg-gray-50/50 transition @rowBg">
+                            <tr data-doc-id="@doc.Id" class="hover:bg-gray-50/50 transition @rowBg">
                                 <td class="px-6 py-4">
                                     <div class="flex items-center gap-3">
                                         <div class="w-8 h-8 @fileIcon.BgClass rounded-lg flex items-center justify-center shrink-0">
@@ -179,7 +179,7 @@
                                 <td class="px-4 py-4 text-sm text-gray-500">@doc.UploadedAt.ToLocalTime().ToString("dd/MM/yyyy")</td>
                                 <td class="px-4 py-4 text-sm text-gray-500">@FormatSize(doc.SizeBytes)</td>
                                 <td class="px-4 py-4 text-sm text-gray-500 truncate max-w-[8rem]">@(doc.Uploader?.FullName ?? doc.UploaderId)</td>
-                                <td class="px-4 py-4">
+                                <td class="px-4 py-4" data-status-cell>
                                     <span class="inline-flex items-center gap-1.5 px-2.5 py-1 @chip.Wrap rounded-full text-xs font-medium"
                                           title="@doc.ErrorMessage">
                                         <i class="@chip.Icon text-[10px]"></i> @chip.Label
@@ -190,7 +190,10 @@
                                         <button class="text-gray-400 hover:text-blue-600 transition" title="Tải xuống">
                                             <i class="fa-solid fa-download text-sm"></i>
                                         </button>
-                                        <button class="text-gray-400 hover:text-red-500 transition" title="Xóa">
+                                        <button type="button"
+                                                data-delete-id="@doc.Id"
+                                                data-delete-name="@doc.OriginalFileName"
+                                                class="text-gray-400 hover:text-red-500 transition" title="Xóa">
                                             <i class="fa-regular fa-trash-can text-sm"></i>
                                         </button>
                                         <button class="text-gray-400 hover:text-gray-600 transition">
@@ -233,6 +236,111 @@
         <p class="text-xs text-gray-400">&copy; 2026 LD3 AI Chatbot</p>
     </footer>
 
+    <!-- ==================== SignalR real-time status updates ==================== -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <script>
+        (function () {
+            if (typeof signalR === "undefined") return;
+
+            const visibleIds = new Set(
+                Array.from(document.querySelectorAll("[data-doc-id]"))
+                     .map(el => (el.dataset.docId || "").toLowerCase())
+            );
+            if (visibleIds.size === 0) return;
+
+            const conn = new signalR.HubConnectionBuilder()
+                .withUrl("/hubs/document")
+                .withAutomaticReconnect()
+                .build();
+
+            // Debounce reloads so a burst of updates triggers one refresh.
+            let reloadTimer = null;
+            function scheduleReload() {
+                if (reloadTimer) clearTimeout(reloadTimer);
+                reloadTimer = setTimeout(() => window.location.reload(), 800);
+            }
+
+            conn.on("DocumentUpdated", (documentId, newStatus) => {
+                const id = (documentId || "").toLowerCase();
+                if (!visibleIds.has(id)) return;
+                // For v1 the safest path is a debounced reload — keeps the
+                // status chip, counters, and Failed-row tint perfectly in sync
+                // with what the server would render.
+                scheduleReload();
+            });
+
+            conn.start().catch(err => console.warn("signalr_start_failed", err));
+        })();
+    </script>
+
+    <!-- ==================== Delete script (DELETE /api/documents/{id}) ==================== -->
+    <script>
+        (function () {
+            // Read the CSRF / antiforgery token if present (Razor renders one when there is any form on the page).
+            function getAntiForgeryToken() {
+                const el = document.querySelector('input[name="__RequestVerificationToken"]');
+                return el ? el.value : null;
+            }
+
+            document.querySelectorAll("[data-delete-id]").forEach((btn) => {
+                btn.addEventListener("click", async () => {
+                    const docId = btn.dataset.deleteId;
+                    const name  = btn.dataset.deleteName || "tài liệu này";
+                    if (!docId) return;
+
+                    if (!confirm(`Bạn có chắc muốn xoá "${name}" và toàn bộ vector liên quan? Hành động này không thể hoàn tác.`)) {
+                        return;
+                    }
+
+                    // Lock the button to prevent double-click.
+                    btn.disabled = true;
+                    btn.classList.add("opacity-50", "cursor-not-allowed");
+                    const icon = btn.querySelector("i");
+                    const originalIconClass = icon ? icon.className : null;
+                    if (icon) icon.className = "fa-solid fa-spinner fa-spin text-sm";
+
+                    try {
+                        const headers = { "Accept": "application/json" };
+                        const token   = getAntiForgeryToken();
+                        if (token) headers["RequestVerificationToken"] = token;
+
+                        const res = await fetch(`/api/documents/${encodeURIComponent(docId)}`, {
+                            method:      "DELETE",
+                            headers:     headers,
+                            credentials: "same-origin",
+                        });
+
+                        if (!res.ok) {
+                            const body = await res.text().catch(() => "");
+                            alert(`Xoá thất bại (HTTP ${res.status}): ${body || "không rõ"}`);
+                            // Restore icon
+                            if (icon && originalIconClass) icon.className = originalIconClass;
+                            btn.disabled = false;
+                            btn.classList.remove("opacity-50", "cursor-not-allowed");
+                            return;
+                        }
+
+                        // ---- Success: remove row + fix counters in-place ----
+                        const row = btn.closest("tr[data-doc-id]");
+                        if (row) {
+                            // Was the row marked Failed? Decrement appropriate counter.
+                            const statusChip = row.querySelector("[data-status-cell] span");
+                            row.style.transition = "opacity 200ms ease";
+                            row.style.opacity = "0";
+                            setTimeout(() => row.remove(), 220);
+                        }
+                    } catch (err) {
+                        console.error("delete_failed", err);
+                        alert("Lỗi kết nối tới máy chủ khi xoá tài liệu.");
+                        if (icon && originalIconClass) icon.className = originalIconClass;
+                        btn.disabled = false;
+                        btn.classList.remove("opacity-50", "cursor-not-allowed");
+                    }
+                });
+            });
+        })();
+    </script>
+
     <!-- ==================== Upload script (POSTs to /api/documents) ==================== -->
     <script>
         (function () {
@@ -240,37 +348,72 @@
             const input   = document.getElementById('upload-input');
             if (!trigger || !input) return;
 
+            const originalLabel = trigger.innerHTML;
+
             trigger.addEventListener('click', () => input.click());
 
             input.addEventListener('change', async () => {
-                const file = input.files && input.files[0];
-                if (!file) return;
+                const files = input.files ? Array.from(input.files) : [];
+                if (files.length === 0) return;
 
+                const count = files.length;
                 trigger.disabled = true;
-                trigger.innerText = 'Đang tải lên...';
+                trigger.classList.add('opacity-70', 'cursor-not-allowed');
+                trigger.innerHTML =
+                    `<i class="fa-solid fa-spinner fa-spin text-xs"></i> Đang tải ${count} tệp...`;
 
                 try {
+                    // Build one FormData with N entries under the SAME key 'files'
+                    // — backend binds them via IFormFileCollection.
                     const fd = new FormData();
-                    fd.append('file', file);
+                    for (const f of files) fd.append('files', f, f.name);
 
                     const res = await fetch('/api/documents', {
-                        method: 'POST',
-                        body: fd,
-                        credentials: 'same-origin'
+                        method:      'POST',
+                        body:        fd,
+                        credentials: 'same-origin',
+                        headers:     { 'Accept': 'application/json' },
                     });
 
                     if (!res.ok) {
-                        const txt = await res.text();
-                        alert('Tải lên thất bại: ' + txt);
+                        const txt = await res.text().catch(() => '');
+                        alert(`Tải lên thất bại (HTTP ${res.status}):\n${txt}`);
+                        return;
+                    }
+
+                    // Expect: { totalAccepted, totalFailed, items: [{fileName,success,error,...}] }
+                    let summary = null;
+                    try { summary = await res.json(); } catch { /* ignore */ }
+
+                    if (summary && Array.isArray(summary.items)) {
+                        const failed = summary.items
+                            .filter(i => !i.success)
+                            .map(i => `• ${i.fileName}: ${i.error || 'lỗi'}`);
+
+                        if (failed.length === 0) {
+                            // Full success — reload to see the new Pending rows.
+                            window.location.reload();
+                            return;
+                        }
+
+                        // Partial: tell the user, then reload anyway so successes show up.
+                        alert(
+                            `Đã tải lên ${summary.totalAccepted}/${count} tệp.\n\n` +
+                            `Thất bại:\n${failed.join('\n')}`
+                        );
+                        window.location.reload();
                     } else {
-                        // 202 Accepted — row is Pending; reload to see it.
+                        // No structured body — assume success.
                         window.location.reload();
                     }
                 } catch (err) {
-                    alert('Lỗi kết nối: ' + err);
+                    console.error('upload_failed', err);
+                    alert('Lỗi kết nối tới máy chủ.');
                 } finally {
-                    input.value = '';
+                    input.value = '';                  // allow re-selecting the same files
                     trigger.disabled = false;
+                    trigger.classList.remove('opacity-70', 'cursor-not-allowed');
+                    trigger.innerHTML = originalLabel;
                 }
             });
         })();
