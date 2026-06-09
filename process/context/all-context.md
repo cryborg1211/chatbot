@@ -217,7 +217,7 @@ chatbot/
         ingest.py              -- Pydantic models for ingest
         query.py               -- Pydantic models for query
       services/
-        chunker.py             -- LlamaIndex SentenceSplitter wrapper
+        chunker.py             -- Hybrid chunker: HierarchicalChunker primary + Markdown-aware oversized-chunk post-processor (SentenceSplitter fallback for prose)
         embedder.py            -- BAAI/bge-m3 singleton embedder
         llm_router.py          -- Ollama LLM with enforced anti-hallucination system prompt
         loader.py              -- Docling-based document loader (PDF, DOCX, legacy DOC)
@@ -255,7 +255,7 @@ chatbot/
 - **Embedding Model:** BAAI/bge-m3 (1024-dim dense vectors) via sentence-transformers / HuggingFace
 - **Vector DB:** Qdrant 1.11+ (local instance, collection: `ld3_knowledge`)
 - **LLM:** Ollama (local) — default model: Qwen 2.5:3b (configurable, API-selectable planned)
-- **Chunking:** LlamaIndex SentenceSplitter (current; migrating to MarkdownNodeParser)
+- **Chunking:** Docling `HierarchicalChunker` as primary splitter (table-aware); custom Markdown-aware post-processor re-attaches column headers to continuation chunks; `SentenceSplitter` fallback for oversized prose. `DoclingResult` dataclass bridges loader → chunker boundary.
 - **Prompt Templates:** Jinja2-based RAG system prompt
 - **Job Queue:** arq (Redis-backed async worker for document upload processing)
 - **Config:** pydantic-settings (env-based, `.env` file)
@@ -285,7 +285,7 @@ chatbot/
 
 **Anti-hallucination system prompt:** `LlmRouter.ENFORCED_SYSTEM_PROMPT` is always injected at index 0 of every conversation. It forces the LLM to read tables row-by-row, extract before calculating, never invent numbers, and state when data is missing.
 
-**Document ingestion flow:** Upload via .NET API → stored to `App_Data/uploads/` → `DocumentIngestionWorker` (background service) polls Pending docs → sends to Python `/api/ingest` → Docling parses to Markdown → SentenceSplitter chunks → bge-m3 embeds → Qdrant stores. SignalR pushes status updates to browser.
+**Document ingestion flow:** Upload via .NET API → stored to `App_Data/uploads/` → `DocumentIngestionWorker` (background service) polls Pending docs → sends to Python `/api/ingest` → Docling parses to Markdown + returns `DoclingResult` → `HierarchicalChunker` primary split → Markdown-aware oversized-chunk post-processing (re-attaches table headers) → bge-m3 embeds → Qdrant stores. SignalR pushes status updates to browser. Plain-text (`.txt`) path still uses `SentenceSplitter` directly.
 
 **Legacy .doc support:** Binary `.doc` files are converted to `.docx` via LibreOffice headless (`convert_doc_to_docx`), then processed through Docling like normal DOCX.
 
@@ -354,7 +354,9 @@ chatbot/
 
 ## Current Active Work
 
-**Active problem:** The SentenceSplitter in `worker/app/services/chunker.py` blindly splits Docling's Markdown output by token count, cutting table headers from their rows. Need to integrate LlamaIndex's `MarkdownNodeParser` to keep tables intact while preserving the existing ingestion architecture.
+**Hybrid chunker shipped (2026-06-09).** The `HierarchicalChunker` + Markdown-aware post-processor replaced the old `SentenceSplitter`-only chunker. All documents re-ingested. No active blocking problem.
+
+**Known issue (low priority):** `code-review-graph` pre-commit hook fails with `UnicodeEncodeError` (cp1252 codec) on Windows when changed files contain Vietnamese text. Non-blocking — commit still succeeds. Tracked in `process/general-plans/backlog/code-review-graph-unicode_BACKLOG.md`.
 
 ## Current Features
 
@@ -366,6 +368,7 @@ No feature folders created yet. Potential future feature areas:
 ## Scan Metadata
 
 - Generated: 2026-06-09
-- HEAD: 4a5e881 (main)
-- Mode: fresh (first STUDY)
+- Last updated: 2026-06-09 (hybrid-chunker implementation complete)
+- HEAD: 77ea6ad (main) — hybrid chunker + Markdown post-processor shipped
+- Mode: incremental update
 - Package manager: dotnet (C#) + pip/hatch (Python worker)

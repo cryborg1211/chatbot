@@ -2,7 +2,7 @@
 
 **Date:** 09-06-26
 **Complexity:** Simple
-**Status:** ⏳ PLANNED
+**Status:** ✅ VERIFIED
 
 ## Overview
 
@@ -481,10 +481,9 @@ work at every intermediate state. If `Chunker.split` ever returns something that
 - RESEARCH: ✅ Complete — pipeline, loader, chunker, config, and Qdrant contracts reviewed.
 - INNOVATE: ✅ Complete — Hybrid A+C chosen; alternatives (pure SentenceSplitter, LangChain
   RecursiveCharacterTextSplitter, pure Markdown regex splitter) rejected.
-- PLAN: ✅ Current — this document.
-- EXECUTE: Next — implement steps 1-14 exactly as specified.
-- VERIFY: After step 14 — collect Verification Evidence items 1-6 above.
+- PLAN: ✅ Complete — this document.
+- EXECUTE: ✅ Complete — steps 1-14 implemented; HierarchicalChunker + Markdown-aware
+  post-processor deployed; all format smoke tests passed; Qdrant re-ingested.
+- VERIFY: ✅ Complete — Verification Evidence items 1-6 confirmed. Plan archived to completed/.
 
-**Next step for executor:** Begin with Step 1 — add `DoclingResult` dataclass to `loader.py`.
-
-**Remind:** After Step 9 and Step 12, STOP and verify before proceeding to the next phase.
+**This plan is COMPLETE. Archived to `process/general-plans/completed/`.**
