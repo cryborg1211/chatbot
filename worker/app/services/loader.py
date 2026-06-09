@@ -1,22 +1,37 @@
 """Document loaders — turn raw bytes into a list of LlamaIndex Documents.
 
 Dispatch by MIME type:
-  - application/pdf  → pypdf
-  - .docx            → python-docx
+  - application/pdf  → Docling Markdown
+  - .docx            → Docling Markdown
   - text/plain       → utf-8 decode
 
-We deliberately use the low-level libraries directly (instead of
-`llama_index.readers.file`) because we already have the bytes in memory —
-no need for the LlamaIndex readers' temp-file roundtrip.
+Docling converts complex documents into Markdown, preserving table structure
+better than plain PDF/DOCX text extraction.
 """
 
 from __future__ import annotations
 
-import io
+import dataclasses
 import logging
+import tempfile
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+
+@dataclasses.dataclass
+class DoclingResult:
+    """Carries both the Markdown text and the native DoclingDocument.
+
+    The chunker uses ``docling_doc`` with ``HierarchicalChunker`` for
+    structure-aware splitting.  The ``text`` field is kept for logging /
+    fallback display.  ``metadata`` is forwarded into every ``TextNode``.
+    """
+
+    text: str
+    docling_doc: Any
+    metadata: dict[str, Any]
 
 
 class LoaderError(Exception):
@@ -38,12 +53,12 @@ def load_documents(file_bytes: bytes, mime_type: str, original_name: str) -> lis
         return _load_text(file_bytes, original_name)
 
     if mime_type == "application/pdf":
-        return _load_pdf(file_bytes, original_name)
+        return _load_docling(file_bytes, original_name, ".pdf")
 
     if mime_type == (
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     ):
-        return _load_docx(file_bytes, original_name)
+        return _load_docling(file_bytes, original_name, ".docx")
     
     if mime_type == "application/msword":
         return _load_legacy_doc(file_bytes, original_name)
@@ -68,7 +83,7 @@ def _load_legacy_doc(file_bytes: bytes, original_name: str) -> list[Any]:
     import tempfile
     from pathlib import Path
 
-    from ..preprocessing.docx_processor import (
+    from .preprocessing.docx_processor import (
         DocxProcessingError,
         convert_doc_to_docx,
     )
@@ -98,8 +113,8 @@ def _load_legacy_doc(file_bytes: bytes, original_name: str) -> list[Any]:
     if not docx_bytes:
         raise LoaderError("LibreOffice produced an empty .docx — corrupt source?")
 
-    # Hand off to the existing docx loader (tables preserved via mammoth).
-    return _load_docx(docx_bytes, original_name)
+    # Hand off to Docling Markdown extraction.
+    return _load_docling(docx_bytes, original_name, ".docx")
 # ---------------------------------------------------------------------
 #  Per-format loaders
 # ---------------------------------------------------------------------
@@ -113,51 +128,30 @@ def _load_text(file_bytes: bytes, original_name: str) -> list[Any]:
     return [Document(text=text, metadata={"source": original_name})]
 
 
-def _load_pdf(file_bytes: bytes, original_name: str) -> list[Any]:
-    from llama_index.core import Document
-    from pypdf import PdfReader
+def _load_docling(file_bytes: bytes, original_name: str, suffix: str) -> list[Any]:
+    from docling.document_converter import DocumentConverter
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        tmp.write(file_bytes)
+        tmp_path = Path(tmp.name)
 
     try:
-        reader = PdfReader(io.BytesIO(file_bytes))
+        converter = DocumentConverter()
+        result = converter.convert(tmp_path)
+        markdown_text = result.document.export_to_markdown()
+        docling_doc = result.document
     except Exception as exc:
-        raise LoaderError(f"PDF parse failed: {exc}") from exc
+        raise LoaderError(f"Docling parse failed for {suffix}: {exc}") from exc
+    finally:
+        tmp_path.unlink(missing_ok=True)
 
-    pages: list[Any] = []
-    for idx, page in enumerate(reader.pages):
-        try:
-            text = page.extract_text() or ""
-        except Exception as exc:
-            logger.warning("pdf_page_extract_failed page=%s err=%s", idx, exc)
-            text = ""
-        if text.strip():
-            pages.append(
-                Document(
-                    text=text,
-                    metadata={"source": original_name, "page": idx + 1},
-                )
-            )
-
-    if not pages:
-        raise LoaderError("PDF contains no extractable text (likely scanned — OCR not enabled).")
-    return pages
-
-
-def _load_docx(file_bytes: bytes, original_name: str) -> list[Any]:
-    from docx import Document as DocxDocument  # python-docx
-    from llama_index.core import Document
-
-    try:
-        docx_obj = DocxDocument(io.BytesIO(file_bytes))
-    except Exception as exc:
-        raise LoaderError(f"DOCX parse failed: {exc}") from exc
-
-    paragraphs = [p.text for p in docx_obj.paragraphs if p.text and p.text.strip()]
-    if not paragraphs:
-        raise LoaderError("DOCX has no readable text.")
+    if not markdown_text.strip():
+        raise LoaderError(f"{suffix.upper().lstrip('.')} has no readable Markdown content.")
 
     return [
-        Document(
-            text="\n".join(paragraphs),
-            metadata={"source": original_name},
+        DoclingResult(
+            text=markdown_text,
+            docling_doc=docling_doc,
+            metadata={"source": original_name, "parser": "docling"},
         )
     ]
