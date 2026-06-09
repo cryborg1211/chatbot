@@ -1,17 +1,35 @@
 # =========================
 # 1. AI Assistant & IDE
 # =========================
-/.claude/
+.claude/
+.agents/
+.codex/
+.cursor/
+.cursorrules
+.gemini/
+.github/
+.kiro/
+.qoder/
+.vibecode-backup/
 .vscode/
 .vs/
+.windsurfrules
 *.user
+GEMINI.md
+QODER.md
+
+# Agent harness internal
+.vc-installed-files
+.vc-version
+.code-review-graph/
 
 # =========================
 # 2. .NET Core (Backend & UI)
 # =========================
 bin/
 obj/
-appsettings.Development.json 
+appsettings.Development.json
+App_Data/
 
 # =========================
 # 3. Python (AI Worker / Crawler)
@@ -27,6 +45,7 @@ venv/
 env.bak/
 venv.bak/
 .env
+worker/tmp_uploads/
 
 # =========================
 # 4. Data Files
@@ -43,9 +62,14 @@ venv.bak/
 *.sqlite3
 
 # =========================
-# 5. OS Generated Files
+# 5. Scratch / Temp
+# =========================
+qdrant_dump.txt
+dumbdata.py
+scracth/
+
+# =========================
+# 6. OS Generated Files
 # =========================
 .DS_Store
 Thumbs.db
-# Added by code-review-graph
-.code-review-graph/

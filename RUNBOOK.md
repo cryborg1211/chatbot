@@ -93,6 +93,10 @@ cd C:\Users\caokh\Desktop\vscode\chatbot\worker
 uvicorn app.main:app --port 8001 --reload
 ```
 
+or 
+worker\.venv\Scripts\activate.bat
+in terminal 
+
 **Wait** until you see `INFO: Application startup complete.` (≈ 20–40 s on a cold boot — bge-m3 has to load into RAM). Do **not** start the .NET app before this — early requests will 502.
 
 ### Terminal 3 — .NET 10 Web (ASP.NET + Razor)
