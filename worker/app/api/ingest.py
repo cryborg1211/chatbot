@@ -21,6 +21,7 @@ from fastapi.responses import JSONResponse
 
 from ..auth import require_api_key
 from ..schemas.ingest import IngestResponse
+from ..services.chunk_metadata import prepend_document_context_to_chunks
 from ..services.chunker import Chunker
 from ..services.embedder import Embedder
 from ..services.loader import LoaderError, load_documents
@@ -111,7 +112,8 @@ async def ingest_document(
             return _failed(document_id, "NO_CONTENT",
                            "No chunks produced after splitting.", elapsed_ms())
 
-        texts = [n.get_content() for n in nodes]
+        raw_texts = [n.get_content() for n in nodes]
+        texts = prepend_document_context_to_chunks(raw_texts, original_name)
         vectors = embedder.encode(texts)
 
         chunk_count = vector_store.upsert_chunks(

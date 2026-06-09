@@ -72,6 +72,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         base_url=settings.ollama_base_url,
         model=settings.ollama_model,
         timeout=settings.ollama_timeout,
+        temperature=settings.ollama_temperature,
     )
 
     # ---- Stash on app.state ----

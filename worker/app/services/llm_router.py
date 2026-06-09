@@ -37,7 +37,13 @@ When processing table data, you MUST strictly adhere to the following rules:
 class LlmRouter:
     """Streaming chat over the configured Ollama instance."""
 
-    def __init__(self, base_url: str, model: str, timeout: float = 120.0):
+    def __init__(
+        self,
+        base_url: str,
+        model: str,
+        timeout: float = 120.0,
+        temperature: float = 0.1,
+    ):
         # Imported lazily so the (heavy) llama_index modules don't load
         # at process start if someone monkey-patches the router for tests.
         from llama_index.llms.ollama import Ollama
@@ -47,10 +53,11 @@ class LlmRouter:
             model=model,
             base_url=base_url,
             request_timeout=timeout,
+            temperature=temperature,
         )
         logger.info(
-            "llm_router_ready backend=ollama model=%s base_url=%s system_prompt_chars=%d",
-            model, base_url, len(ENFORCED_SYSTEM_PROMPT),
+            "llm_router_ready backend=ollama model=%s base_url=%s temperature=%.2f system_prompt_chars=%d",
+            model, base_url, temperature, len(ENFORCED_SYSTEM_PROMPT),
         )
 
     @property

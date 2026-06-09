@@ -26,6 +26,7 @@ from arq.connections import RedisSettings
 from qdrant_client import QdrantClient
 
 from .config import Settings, get_settings
+from .services.chunk_metadata import prepend_document_context_to_chunks
 from .services.embedder import Embedder
 from .services.preprocessing import DocxProcessingError, DocxProcessor
 from .services.vectorstore import VectorStore
@@ -98,7 +99,8 @@ async def ingest_document_task(
         if not chunks:
             return {"status": "failed", "reason": "no_chunks"}
 
-        texts = [c.text for c in chunks]
+        raw_texts = [c.text for c in chunks]
+        texts = prepend_document_context_to_chunks(raw_texts, original_name)
 
         # ---- 2) Embed (heavy — off the event loop) ----
         try:
@@ -163,7 +165,7 @@ async def worker_startup(ctx: dict[str, Any]) -> None:
     ctx["embedder"]     = embedder
     ctx["qdrant"]       = qdrant
     ctx["vector_store"] = vector_store
-    ctx["processor"]    = DocxProcessor(chunk_size=800, chunk_overlap=150)
+    ctx["processor"]    = DocxProcessor(chunk_size=s.chunk_size, chunk_overlap=s.chunk_overlap)
 
     logger.info("arq_worker_ready")
 

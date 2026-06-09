@@ -32,16 +32,18 @@ class Settings(BaseSettings):
     embed_model: str = "BAAI/bge-m3"
 
     # ---- Chunking ----
-    chunk_size: int = 512
-    chunk_overlap: int = 50
+    # Larger windows preserve table/list rows with surrounding document context.
+    chunk_size: int = 1024
+    chunk_overlap: int = 250
 
     # ---- LLM (Ollama) ----
     ollama_base_url: str = "http://localhost:11434"
     ollama_model:    str = "gemma2:2b"
-    ollama_timeout:  float = 120.0
+    ollama_timeout:      float = 120.0
+    ollama_temperature:  float = 0.1
 
     # ---- Retrieval ----
-    retrieval_top_k: int = 5
+    retrieval_top_k: int = 12
 
     # ---- Redis / arq queue ----
     redis_host:     str        = "localhost"

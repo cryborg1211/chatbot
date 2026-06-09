@@ -232,12 +232,12 @@ public sealed class DocumentsController : ControllerBase
     //  DELETE /api/documents/{id}
     //  Tenant-scoped delete. Order:
     //    1. Verify row belongs to caller's department (else 404 / 403).
-    //    2. Best-effort delete the on-disk blob.
-    //    3. Delete the SQL row.
-    //    4. Best-effort: tell Python worker to wipe Qdrant chunks.
+    //    2. Delete Qdrant chunks via Python worker.
+    //    3. Best-effort delete the on-disk blob.
+    //    4. Delete the SQL row.
     //    5. Audit log.
-    //  Steps 4-5 never roll the SQL delete back — orphan vectors are
-    //  still tenant-filtered downstream and can be reaped by an admin job.
+    //  Vector cleanup is intentionally fail-fast: if worker/Qdrant delete
+    //  fails, keep the SQL row so the document can be retried/deleted later.
     // ------------------------------------------------------------------
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(
@@ -254,7 +254,25 @@ public sealed class DocumentsController : ControllerBase
 
         if (doc is null) return NotFound();
 
-        // 1) Disk blob — best-effort.
+        // 1) Qdrant chunks — must succeed before SQL delete.
+        try
+        {
+            await _worker.DeleteDocumentAsync(doc.Id, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "doc_delete_worker_failed doc={DocId} — SQL row kept so delete can be retried",
+                doc.Id);
+
+            return StatusCode(StatusCodes.Status502BadGateway, new
+            {
+                error      = "Vector cleanup failed. Document was not deleted.",
+                documentId = doc.Id,
+            });
+        }
+
+        // 2) Disk blob — best-effort after vectors are gone.
         try
         {
             await _storage.DeleteAsync(doc.StoredFileName);
@@ -266,21 +284,9 @@ public sealed class DocumentsController : ControllerBase
                 doc.Id, doc.StoredFileName);
         }
 
-        // 2) SQL row — the authoritative delete.
+        // 3) SQL row — final authoritative delete.
         _db.Documents.Remove(doc);
         await _db.SaveChangesAsync(cancellationToken);
-
-        // 3) Qdrant chunks — best-effort via worker.
-        try
-        {
-            await _worker.DeleteDocumentAsync(doc.Id, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex,
-                "doc_delete_worker_failed doc={DocId} — Qdrant orphans may remain",
-                doc.Id);
-        }
 
         _ = _audit.LogAsync(
             "doc.delete", "doc", LogSeverity.Warn,
