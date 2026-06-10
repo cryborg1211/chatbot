@@ -37,30 +37,6 @@
             <!-- Scrollable Middle -->
             <div class="flex-1 overflow-y-auto px-3 pt-2">
 
-                <!-- Recent Chats -->
-                <p class="px-2 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Gần đây</p>
-                <nav class="space-y-0.5 mb-4">
-                    <a href="#" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition">
-                        <i class="fa-regular fa-comment text-gray-400 text-xs"></i>
-                        <span class="truncate">Hướng dẫn chuyển đổi số</span>
-                    </a>
-                    <a href="#" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition">
-                        <i class="fa-regular fa-comment text-gray-400 text-xs"></i>
-                        <span class="truncate">Quy trình xử lý hồ sơ</span>
-                    </a>
-                    <a href="#" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition">
-                        <i class="fa-regular fa-comment text-gray-400 text-xs"></i>
-                        <span class="truncate">Báo cáo quý III</span>
-                    </a>
-                    <a href="#" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition">
-                        <i class="fa-regular fa-comment text-gray-400 text-xs"></i>
-                        <span class="truncate">Thông tin nội bộ</span>
-                    </a>
-                </nav>
-
-                <!-- Divider -->
-                <div class="h-px bg-gray-200 mx-2 my-3"></div>
-
                 <!-- Admin Navigation -->
                 <nav class="space-y-0.5">
                     <a href="/Admin/Users"
@@ -88,11 +64,13 @@
                     <i class="fa-solid fa-gear text-gray-400 text-sm w-5 text-center"></i>
                     <span>Cài đặt hệ thống</span>
                 </a>
-                <a href="/Account/Login"
-                   class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-red-500 hover:bg-red-50 transition">
-                    <i class="fa-solid fa-right-from-bracket text-red-400 text-sm w-5 text-center"></i>
-                    <span>Đăng xuất</span>
-                </a>
+                <form method="post" action="/Account/Logout">
+                    <button type="submit"
+                            class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-red-500 hover:bg-red-50 transition w-full">
+                        <i class="fa-solid fa-right-from-bracket text-red-400 text-sm w-5 text-center"></i>
+                        <span>Đăng xuất</span>
+                    </button>
+                </form>
             </div>
         </aside>
 

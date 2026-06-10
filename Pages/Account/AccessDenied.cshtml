@@ -1,0 +1,78 @@
+@page
+@model chatbot.Pages.Account.AccessDeniedModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Truy cập bị từ chối - LD3 AI Chatbot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+</head>
+<body class="bg-gray-100 text-gray-800 antialiased min-h-screen flex flex-col">
+
+    <!-- ==================== TOP BAR ==================== -->
+    <header class="bg-white border-b border-gray-200 px-6 shrink-0">
+        <div class="h-14 flex items-center">
+            <a href="/" class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center">
+                    <i class="fa-solid fa-heart-pulse text-blue-500"></i>
+                </div>
+                <span class="text-base font-bold text-blue-600">LD3 AI Chatbot</span>
+            </a>
+        </div>
+    </header>
+
+    <!-- ==================== MAIN CONTENT ==================== -->
+    <main class="flex-1 flex items-center justify-center px-4 py-8">
+        <div class="w-full max-w-md">
+
+            <!-- Access Denied Card -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 px-8 pt-10 pb-8">
+
+                <!-- Lock Icon -->
+                <div class="flex justify-center mb-5">
+                    <div class="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center shadow-lg shadow-red-500/20">
+                        <i class="fa-solid fa-lock text-white text-2xl"></i>
+                    </div>
+                </div>
+
+                <!-- Title -->
+                <h1 class="text-xl font-bold text-gray-800 text-center">Truy cập bị từ chối</h1>
+                <p class="text-sm text-gray-500 text-center mt-3 leading-relaxed">
+                    Bạn không có quyền truy cập trang này.<br />
+                    Vui lòng liên hệ quản trị viên nếu bạn cần được cấp quyền.
+                </p>
+
+                <!-- Back to Chat Button -->
+                <div class="mt-7">
+                    <a href="/Chat"
+                       class="flex items-center justify-center gap-2 w-full h-11 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white font-semibold rounded-lg shadow-sm hover:shadow transition">
+                        <i class="fa-solid fa-arrow-left text-sm"></i>
+                        Quay lại trang trò chuyện
+                    </a>
+                </div>
+            </div>
+
+            <!-- Warning Text -->
+            <p class="text-center text-xs text-gray-400 mt-6 leading-relaxed max-w-sm mx-auto">
+                Nếu bạn vừa được cấp quyền mới, hãy đăng xuất và đăng nhập lại để cập nhật.
+            </p>
+        </div>
+    </main>
+
+    <!-- ==================== FOOTER ==================== -->
+    <footer class="bg-white border-t border-gray-200 py-4 text-center shrink-0">
+        <p class="text-xs text-gray-400 mb-2">Bản quyền thuộc Trung tâm ĐMST &amp; CĐS Lâm Đồng III &copy; 2026</p>
+        <div class="flex items-center justify-center gap-4">
+            <a href="#" class="text-gray-400 hover:text-gray-600 transition"><i class="fa-solid fa-globe"></i></a>
+            <a href="#" class="text-gray-400 hover:text-gray-600 transition"><i class="fa-regular fa-envelope"></i></a>
+            <a href="#" class="text-gray-400 hover:text-gray-600 transition"><i class="fa-brands fa-facebook-f"></i></a>
+        </div>
+    </footer>
+
+</body>
+</html>

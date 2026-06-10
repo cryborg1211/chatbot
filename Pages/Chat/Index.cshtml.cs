@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Text.Json;
 using chatbot.Data;
+using chatbot.Infrastructure.Authorization;
 using chatbot.Infrastructure.Identity;
 using chatbot.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -30,6 +31,7 @@ public sealed class IndexModel : PageModel
     public IndexModel(ApplicationDbContext db) => _db = db;
 
     // ---- Render data ----
+    public bool IsAdmin { get; private set; }
     public string FullName { get; private set; } = "Người dùng";
     public IReadOnlyList<ConversationSidebarItem> RecentConversations { get; private set; } = Array.Empty<ConversationSidebarItem>();
     public Conversation? CurrentConversation { get; private set; }
@@ -46,6 +48,7 @@ public sealed class IndexModel : PageModel
             return Forbid();
 
         FullName = User.FindFirstValue(AppClaimTypes.FullName) ?? "Người dùng";
+        IsAdmin  = User.IsInRole(Roles.Admin);
 
         // ---- Sidebar: recent conversations ----
         RecentConversations = await _db.Conversations

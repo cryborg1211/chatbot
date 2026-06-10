@@ -21,12 +21,13 @@ namespace chatbot.Infrastructure.Identity;
 /// and uses it as a metadata filter on the vector store.
 /// </summary>
 public class ApplicationUserClaimsPrincipalFactory
-    : UserClaimsPrincipalFactory<ApplicationUser>
+    : UserClaimsPrincipalFactory<ApplicationUser, IdentityRole>
 {
     public ApplicationUserClaimsPrincipalFactory(
         UserManager<ApplicationUser> userManager,
+        RoleManager<IdentityRole> roleManager,
         IOptions<IdentityOptions> optionsAccessor)
-        : base(userManager, optionsAccessor)
+        : base(userManager, roleManager, optionsAccessor)
     {
     }
 

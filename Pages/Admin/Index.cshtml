@@ -1,0 +1,323 @@
+@page "/admin"
+@model chatbot.Pages.Admin.AdminIndexModel
+@{
+    Layout = null;
+
+    (string Bg, string Text, string Label) StatusChip(chatbot.Pages.Admin.UserStatus s) => s switch
+    {
+        chatbot.Pages.Admin.UserStatus.Active  => ("bg-green-50",  "text-green-600",  "Da kich hoat"),
+        chatbot.Pages.Admin.UserStatus.Pending => ("bg-yellow-50", "text-yellow-600", "Cho phe duyet"),
+        chatbot.Pages.Admin.UserStatus.Locked  => ("bg-red-50",    "text-red-600",    "Da tu choi / khoa"),
+        _                                       => ("bg-gray-50",   "text-gray-600",   "?")
+    };
+
+    string AvatarPalette(string id)
+    {
+        var palettes = new[] {
+            "bg-blue-100 text-blue-600", "bg-pink-100 text-pink-600",
+            "bg-green-100 text-green-600", "bg-amber-100 text-amber-600",
+            "bg-violet-100 text-violet-600", "bg-indigo-100 text-indigo-600",
+        };
+        var idx = Math.Abs(id?.GetHashCode() ?? 0) % palettes.Length;
+        return palettes[idx];
+    }
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Trang quan tri - LD3 AI Chatbot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+</head>
+<body class="bg-gray-50 text-gray-800 antialiased">
+    <div class="flex h-screen overflow-hidden">
+
+        <!-- ==================== LEFT SIDEBAR ==================== -->
+        <aside class="w-64 bg-white border-r border-gray-200 flex flex-col shrink-0">
+
+            <!-- Logo -->
+            <div class="h-16 flex items-center gap-2.5 px-5 border-b border-gray-100">
+                <div class="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
+                    <i class="fa-solid fa-heart-pulse text-blue-500 text-lg"></i>
+                </div>
+                <span class="text-lg font-bold text-blue-600 tracking-tight">LD3 AI Chatbot</span>
+            </div>
+
+            <!-- New Chat Button -->
+            <div class="px-4 pt-4 pb-2">
+                <a href="/Chat"
+                   class="flex items-center justify-center gap-2 h-10 w-full border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition cursor-pointer">
+                    <i class="fa-solid fa-plus text-xs"></i>
+                    <span>Cuoc tro chuyen moi</span>
+                </a>
+            </div>
+
+            <!-- Scrollable Middle -->
+            <div class="flex-1 overflow-y-auto px-3 pt-2">
+
+                <!-- Admin Navigation -->
+                <p class="px-2 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Quan tri</p>
+                <nav class="space-y-0.5 mb-4">
+                    <a href="/admin"
+                       class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium bg-blue-50 text-blue-700">
+                        <i class="fa-solid fa-users text-sm w-5 text-center text-blue-500"></i>
+                        <span>Quan ly nguoi dung</span>
+                    </a>
+                    <a href="/Admin/Feedback"
+                       class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition">
+                        <i class="fa-regular fa-comment-dots text-sm w-5 text-center text-gray-400"></i>
+                        <span>Phan hoi &amp; Danh gia</span>
+                    </a>
+                    <a href="/Admin/Logs"
+                       class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition">
+                        <i class="fa-solid fa-clock-rotate-left text-sm w-5 text-center text-gray-400"></i>
+                        <span>Nhat ky he thong</span>
+                    </a>
+                </nav>
+
+                <!-- Divider -->
+                <div class="h-px bg-gray-200 mx-2 my-3"></div>
+
+                <!-- Recent Conversations -->
+                <p class="px-2 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Gan day</p>
+                <nav class="space-y-0.5">
+                    @if (Model.RecentConversations.Count == 0)
+                    {
+                        <p class="px-3 py-2 text-xs text-gray-400 italic">Chua co cuoc tro chuyen nao.</p>
+                    }
+                    @foreach (var c in Model.RecentConversations)
+                    {
+                        <a href="/Chat?id=@c.Id" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition" title="@c.Title">
+                            <i class="fa-regular fa-comment text-gray-400 text-xs"></i>
+                            <span class="truncate">@c.Title</span>
+                        </a>
+                    }
+                </nav>
+            </div>
+
+            <!-- Bottom: Settings & Logout -->
+            <div class="border-t border-gray-200 px-3 py-3 space-y-0.5">
+                <a href="#"
+                   class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition">
+                    <i class="fa-solid fa-gear text-gray-400 text-sm w-5 text-center"></i>
+                    <span>Cai dat he thong</span>
+                </a>
+                <form method="post" action="/Account/Logout">
+                    <button type="submit"
+                            class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-red-500 hover:bg-red-50 transition w-full">
+                        <i class="fa-solid fa-right-from-bracket text-red-400 text-sm w-5 text-center"></i>
+                        <span>Dang xuat</span>
+                    </button>
+                </form>
+            </div>
+        </aside>
+
+        <!-- ==================== RIGHT AREA ==================== -->
+        <div class="flex-1 flex flex-col min-w-0">
+
+            <!-- Top Header -->
+            <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 shrink-0">
+                <!-- Search Bar -->
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                    <input type="text" placeholder="Tim kiem..."
+                           class="w-64 h-9 pl-9 pr-4 bg-gray-50 border border-gray-200 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition" />
+                </div>
+
+                <!-- Right: Notification + Profile -->
+                <div class="flex items-center gap-4">
+                    <button class="relative w-9 h-9 flex items-center justify-center text-gray-500 hover:bg-gray-100 rounded-lg transition">
+                        <i class="fa-regular fa-bell text-lg"></i>
+                        <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white"></span>
+                    </button>
+                    <div class="h-6 w-px bg-gray-200"></div>
+                    <div class="flex items-center gap-3 cursor-pointer">
+                        <div class="text-right leading-tight">
+                            <p class="text-sm font-medium text-gray-700">@Model.FullName</p>
+                            <p class="text-xs text-gray-400">Quan tri vien</p>
+                        </div>
+                        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center ring-2 ring-blue-100">
+                            <i class="fa-solid fa-user text-white text-xs"></i>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Page Content -->
+            <main class="flex-1 overflow-y-auto p-6">
+
+                <!-- Page Header -->
+                <div class="flex items-start justify-between mb-6">
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-800">Quan ly nguoi dung</h1>
+                        <p class="text-sm text-gray-500 mt-1">Phe duyet, phan quyen va giam sat trang thai nguoi dung trong he thong.</p>
+                    </div>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-4 gap-4 mb-8">
+                    <div class="bg-white rounded-lg border border-gray-200 p-5">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
+                                <i class="fa-solid fa-users text-blue-500"></i>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-500">Tong nguoi dung</p>
+                        <p class="text-3xl font-bold text-gray-800 mt-1">@Model.TotalUsers</p>
+                    </div>
+                    <div class="bg-white rounded-lg border border-gray-200 p-5">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center">
+                                <i class="fa-solid fa-circle-check text-green-500"></i>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-500">Da kich hoat</p>
+                        <p class="text-3xl font-bold text-gray-800 mt-1">@Model.ActiveCount</p>
+                    </div>
+                    <div class="bg-white rounded-lg border border-gray-200 p-5">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="w-10 h-10 bg-yellow-50 rounded-lg flex items-center justify-center">
+                                <i class="fa-regular fa-clock text-yellow-500"></i>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-500">Cho phe duyet</p>
+                        <p class="text-3xl font-bold text-gray-800 mt-1">@Model.PendingCount</p>
+                    </div>
+                    <div class="bg-white rounded-lg border border-gray-200 p-5">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center">
+                                <i class="fa-solid fa-lock text-red-500"></i>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-500">Bi khoa</p>
+                        <p class="text-3xl font-bold text-gray-800 mt-1">@Model.LockedCount</p>
+                    </div>
+                </div>
+
+                <!-- User Table -->
+                <div class="bg-white rounded-lg border border-gray-200">
+                    <!-- Table Header Bar (search + dept filter via GET form) -->
+                    <form method="get" class="flex items-center justify-between px-6 py-4 border-b border-gray-200 gap-3">
+                        <div class="flex items-center gap-3 flex-1">
+                            <h2 class="text-lg font-bold text-gray-800 whitespace-nowrap">Danh sach nguoi dung</h2>
+                            <div class="relative">
+                                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                                <input type="text" name="Search" value="@Model.Search" placeholder="Tim theo ten hoac email..."
+                                       class="w-64 h-9 pl-9 pr-3 bg-gray-50 border border-gray-200 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition" />
+                            </div>
+                            <select name="DepartmentId" class="h-9 px-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400">
+                                <option value="">Tat ca phong ban</option>
+                                @foreach (var d in Model.Departments)
+                                {
+                                    <option value="@d.Id" selected="@(Model.DepartmentId == d.Id)">@d.Name</option>
+                                }
+                            </select>
+                            <button type="submit" class="px-4 h-9 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition">Loc</button>
+                        </div>
+                        <span class="text-sm text-gray-500">@Model.TotalCount ket qua</span>
+                    </form>
+
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-gray-100 bg-gray-50/50">
+                                <th class="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">Ten nguoi dung</th>
+                                <th class="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">Email</th>
+                                <th class="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">Phong ban</th>
+                                <th class="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">Trang thai</th>
+                                <th class="text-right text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">Thao tac</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            @if (Model.Items.Count == 0)
+                            {
+                                <tr><td colspan="5" class="px-6 py-12 text-center text-sm text-gray-400">Khong co nguoi dung nao khop bo loc.</td></tr>
+                            }
+                            @foreach (var u in Model.Items)
+                            {
+                                var chip = StatusChip(u.Status);
+                                <tr class="hover:bg-gray-50/50 transition">
+                                    <td class="px-6 py-4">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-9 h-9 rounded-full @AvatarPalette(u.Id) flex items-center justify-center shrink-0">
+                                                <i class="fa-solid fa-user text-xs"></i>
+                                            </div>
+                                            <p class="text-sm font-semibold text-gray-800">@u.FullName</p>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 text-sm text-gray-600">@u.Email</td>
+                                    <td class="px-6 py-4">
+                                        <span class="px-2.5 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium whitespace-nowrap" title="@u.DepartmentId">@u.DepartmentName</span>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <span class="text-sm font-medium @chip.Text">@chip.Label</span>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="flex items-center justify-end gap-2">
+                                            @if (u.Status == chatbot.Pages.Admin.UserStatus.Pending)
+                                            {
+                                                <form method="post" asp-page-handler="Approve" asp-route-id="@u.Id" class="inline">
+                                                    <input type="hidden" name="Search" value="@Model.Search" />
+                                                    <input type="hidden" name="DepartmentId" value="@Model.DepartmentId" />
+                                                    <input type="hidden" name="PageNumber" value="@Model.PageNumber" />
+                                                    <button type="submit" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition">Phe duyet</button>
+                                                </form>
+                                                <form method="post" asp-page-handler="Reject" asp-route-id="@u.Id" class="inline">
+                                                    <input type="hidden" name="Search" value="@Model.Search" />
+                                                    <input type="hidden" name="DepartmentId" value="@Model.DepartmentId" />
+                                                    <input type="hidden" name="PageNumber" value="@Model.PageNumber" />
+                                                    <button type="submit" class="px-3 py-1.5 border border-gray-300 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition">Tu choi</button>
+                                                </form>
+                                            }
+                                            else if (u.Status == chatbot.Pages.Admin.UserStatus.Locked)
+                                            {
+                                                <form method="post" asp-page-handler="Activate" asp-route-id="@u.Id" class="inline">
+                                                    <input type="hidden" name="Search" value="@Model.Search" />
+                                                    <input type="hidden" name="DepartmentId" value="@Model.DepartmentId" />
+                                                    <input type="hidden" name="PageNumber" value="@Model.PageNumber" />
+                                                    <button type="submit" class="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition">Kich hoat lai</button>
+                                                </form>
+                                            }
+                                            else
+                                            {
+                                                <form method="post" asp-page-handler="Reject" asp-route-id="@u.Id" class="inline">
+                                                    <input type="hidden" name="Search" value="@Model.Search" />
+                                                    <input type="hidden" name="DepartmentId" value="@Model.DepartmentId" />
+                                                    <input type="hidden" name="PageNumber" value="@Model.PageNumber" />
+                                                    <button type="submit" class="px-3 py-1.5 border border-gray-300 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition" title="Khoa tai khoan">Khoa</button>
+                                                </form>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+
+                    <!-- Pagination -->
+                    <div class="flex items-center justify-between px-6 py-4 border-t border-gray-200">
+                        <p class="text-sm text-gray-400 italic">Trang @Model.PageNumber / @Model.TotalPages</p>
+                        <div class="flex items-center gap-1">
+                            @{
+                                var prev = Math.Max(1, Model.PageNumber - 1);
+                                var next = Math.Min(Model.TotalPages, Model.PageNumber + 1);
+                            }
+                            <a href="?Search=@Model.Search&DepartmentId=@Model.DepartmentId&PageNumber=@prev"
+                               class="px-3 py-1.5 text-sm text-gray-600 rounded-lg border border-gray-300 hover:bg-gray-50 transition">Truoc</a>
+                            <span class="w-8 h-8 flex items-center justify-center rounded-lg text-sm bg-blue-600 text-white font-medium">@Model.PageNumber</span>
+                            <a href="?Search=@Model.Search&DepartmentId=@Model.DepartmentId&PageNumber=@next"
+                               class="px-3 py-1.5 text-sm text-gray-600 rounded-lg border border-gray-300 hover:bg-gray-50 transition">Sau</a>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            <!-- Footer -->
+            <footer class="bg-white border-t border-gray-200 py-3 px-6 text-center shrink-0">
+                <p class="text-xs text-gray-400">&copy; 2026 Trung tam DMST &amp; CDS Lam Dong III. He thong quan tri AI hop nhat.</p>
+            </footer>
+        </div>
+    </div>
+</body>
+</html>
