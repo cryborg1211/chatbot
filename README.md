@@ -1,6 +1,6 @@
 # 📋 LD3 AI Chatbot - CURENT STAGE
 
-Dự án phát triển hệ thống RAG Chatbot nội bộ cho Trung tâm Kỹ thuật Tiêu chuẩn Đo lường Chất lượng tỉnh Lâm Đồng (LD3). Kế hoạch này được thiết kế nhằm tối ưu hóa giao diện Admin, nâng cấp luồng xử lý tài liệu phức tạp, quản lý chi phí vận hành và đảm bảo hệ thống chịu tải tốt khi đưa vào vận hành thực tế.
+Dự án phát triển hệ thống RAG Chatbot nội bộ cho Trung tâm đổi mới sáng tạo và chuyển đổi số CS III tỉnh Lâm Đồng (LD3). Kế hoạch này được thiết kế nhằm tối ưu hóa giao diện Admin, nâng cấp luồng xử lý tài liệu phức tạp, quản lý chi phí vận hành và đảm bảo hệ thống chịu tải tốt khi đưa vào vận hành thực tế.
 
 ---
 
