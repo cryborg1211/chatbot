@@ -4,6 +4,8 @@ Loaded **once** at FastAPI lifespan startup — the model is ~2 GB and
 takes ~30 s to instantiate, so we cannot do it per request.
 """
 
+
+
 from __future__ import annotations
 
 import logging
@@ -19,7 +21,9 @@ class Embedder:
 
         logger.info("loading_embedder_model model=%s (this can take a while)", model_name)
         # `trust_remote_code=False` because bge-m3 ships pure transformers code.
-        self._model = HuggingFaceEmbedding(model_name=model_name)
+        self._model = HuggingFaceEmbedding(
+            model_name=model_name,
+        )
         logger.info("embedder_ready")
 
     def encode(self, texts: list[str]) -> list[list[float]]:

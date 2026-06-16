@@ -173,18 +173,66 @@
     </table>
 
     <!-- Pagination -->
-    <div class="flex items-center justify-between px-6 py-4 border-t border-gray-200">
-        <p class="text-sm text-gray-400 italic">Trang @Model.PageNumber / @Model.TotalPages</p>
+    <nav aria-label="Pagination" class="flex items-center justify-between px-6 py-4 border-t border-gray-200">
+        @{
+            var pageSize = chatbot.Pages.Admin.UsersModel.PageSize;
+            var startItem = (Model.PageNumber - 1) * pageSize + 1;
+            var endItem = Math.Min(Model.PageNumber * pageSize, Model.TotalCount);
+        }
+        <p class="text-sm text-gray-500">Hien thi @startItem-@endItem trong tong @Model.TotalCount</p>
         <div class="flex items-center gap-1">
-            @{
-                var prev = Math.Max(1, Model.PageNumber - 1);
-                var next = Math.Min(Model.TotalPages, Model.PageNumber + 1);
+            @if (Model.PageNumber <= 1)
+            {
+                <span class="px-3 py-1.5 text-sm text-gray-400 rounded-lg border border-gray-200 pointer-events-none opacity-50">Truoc</span>
             }
-            <a href="?Search=@Model.Search&DepartmentId=@Model.DepartmentId&PageNumber=@prev"
-               class="px-3 py-1.5 text-sm text-gray-600 rounded-lg border border-gray-300 hover:bg-gray-50 transition">Trước</a>
-            <span class="w-8 h-8 flex items-center justify-center rounded-lg text-sm bg-blue-600 text-white font-medium">@Model.PageNumber</span>
-            <a href="?Search=@Model.Search&DepartmentId=@Model.DepartmentId&PageNumber=@next"
-               class="px-3 py-1.5 text-sm text-gray-600 rounded-lg border border-gray-300 hover:bg-gray-50 transition">Sau</a>
+            else
+            {
+                <a href="?Search=@Model.Search&DepartmentId=@Model.DepartmentId&PageNumber=@(Model.PageNumber - 1)"
+                   class="px-3 py-1.5 text-sm text-gray-600 rounded-lg border border-gray-300 hover:bg-gray-50 transition">Truoc</a>
+            }
+
+            @{
+                var pages = new List<int>();
+                if (Model.TotalPages <= 5)
+                {
+                    for (var i = 1; i <= Model.TotalPages; i++) pages.Add(i);
+                }
+                else
+                {
+                    pages.Add(1);
+                    if (Model.PageNumber > 3) pages.Add(-1);
+                    for (var i = Math.Max(2, Model.PageNumber - 1); i <= Math.Min(Model.TotalPages - 1, Model.PageNumber + 1); i++)
+                        pages.Add(i);
+                    if (Model.PageNumber < Model.TotalPages - 2) pages.Add(-1);
+                    pages.Add(Model.TotalPages);
+                }
+            }
+            @foreach (var p in pages)
+            {
+                if (p == -1)
+                {
+                    <span class="w-8 h-8 flex items-center justify-center text-sm text-gray-400">...</span>
+                }
+                else if (p == Model.PageNumber)
+                {
+                    <span class="w-8 h-8 flex items-center justify-center rounded-lg text-sm bg-blue-600 text-white font-medium">@p</span>
+                }
+                else
+                {
+                    <a href="?Search=@Model.Search&DepartmentId=@Model.DepartmentId&PageNumber=@p"
+                       class="w-8 h-8 flex items-center justify-center rounded-lg text-sm text-gray-600 border border-gray-300 hover:bg-gray-50 transition">@p</a>
+                }
+            }
+
+            @if (Model.PageNumber >= Model.TotalPages)
+            {
+                <span class="px-3 py-1.5 text-sm text-gray-400 rounded-lg border border-gray-200 pointer-events-none opacity-50">Sau</span>
+            }
+            else
+            {
+                <a href="?Search=@Model.Search&DepartmentId=@Model.DepartmentId&PageNumber=@(Model.PageNumber + 1)"
+                   class="px-3 py-1.5 text-sm text-gray-600 rounded-lg border border-gray-300 hover:bg-gray-50 transition">Sau</a>
+            }
         </div>
-    </div>
+    </nav>
 </div>

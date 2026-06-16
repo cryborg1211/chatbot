@@ -27,7 +27,7 @@
 
             <!-- New Chat Button -->
             <div class="px-4 pt-4 pb-2">
-                <a href="/"
+                <a href="/Chat"
                    class="flex items-center justify-center gap-2 h-10 w-full border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition cursor-pointer">
                     <i class="fa-solid fa-plus text-xs"></i>
                     <span>Cuộc trò chuyện mới</span>
@@ -39,7 +39,7 @@
 
                 <!-- Admin Navigation -->
                 <nav class="space-y-0.5">
-                    <a href="/Admin/Users"
+                    <a href="/admin"
                        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm @(activeNav == "Users" ? "font-medium bg-blue-50 text-blue-700" : "text-gray-600 hover:bg-gray-100 transition")">
                         <i class="fa-solid fa-users text-sm w-5 text-center @(activeNav == "Users" ? "text-blue-500" : "text-gray-400")"></i>
                         <span>Quản lý người dùng</span>
@@ -59,11 +59,10 @@
 
             <!-- Bottom: Settings & Logout -->
             <div class="border-t border-gray-200 px-3 py-3 space-y-0.5">
-                <a href="#"
-                   class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition">
+                <span class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-400 cursor-not-allowed opacity-50" title="Chưa khả dụng">
                     <i class="fa-solid fa-gear text-gray-400 text-sm w-5 text-center"></i>
                     <span>Cài đặt hệ thống</span>
-                </a>
+                </span>
                 <form method="post" action="/Account/Logout">
                     <button type="submit"
                             class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-red-500 hover:bg-red-50 transition w-full">
@@ -79,21 +78,15 @@
 
             <!-- Top Header -->
             <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 shrink-0">
-                <!-- Search Bar -->
-                <div class="relative">
-                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
-                    <input type="text" placeholder="Tìm kiếm..."
-                           class="w-64 h-9 pl-9 pr-4 bg-gray-50 border border-gray-200 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition" />
-                </div>
+                <div></div>
 
                 <!-- Right: Notification + Profile -->
                 <div class="flex items-center gap-4">
-                    <button class="relative w-9 h-9 flex items-center justify-center text-gray-500 hover:bg-gray-100 rounded-lg transition">
+                    <span class="relative w-9 h-9 flex items-center justify-center text-gray-400 cursor-not-allowed opacity-50" title="Chưa khả dụng">
                         <i class="fa-regular fa-bell text-lg"></i>
-                        <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white"></span>
-                    </button>
+                    </span>
                     <div class="h-6 w-px bg-gray-200"></div>
-                    <div class="flex items-center gap-3 cursor-pointer">
+                    <a href="/Chat" class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition" title="Về trang chat">
                         <div class="text-right leading-tight">
                             <p class="text-sm font-medium text-gray-700">Quản trị viên</p>
                             <p class="text-xs text-gray-400">Lâm Đồng III</p>
@@ -101,7 +94,7 @@
                         <div class="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center ring-2 ring-blue-100">
                             <i class="fa-solid fa-user text-white text-xs"></i>
                         </div>
-                    </div>
+                    </a>
                 </div>
             </header>
 
@@ -112,7 +105,7 @@
 
             <!-- Footer -->
             <footer class="bg-white border-t border-gray-200 py-3 px-6 text-center shrink-0">
-                <p class="text-xs text-gray-400">&copy; 2024 Trung tâm ĐMST &amp; CĐS Lâm Đồng III. Hệ thống quản trị AI hợp nhất.</p>
+                <p class="text-xs text-gray-400">&copy; 2026 Trung tâm ĐMST &amp; CĐS Lâm Đồng III. Hệ thống quản trị AI hợp nhất.</p>
             </footer>
         </div>
     </div>

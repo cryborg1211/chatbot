@@ -243,15 +243,9 @@
                 <div class="max-w-3xl mx-auto">
                     <form id="chat-form" data-conversation-id="@(currentId?.ToString() ?? "")">
                         <div class="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 focus-within:ring-2 focus-within:ring-blue-500/30 focus-within:border-blue-400 transition">
-                            <button type="button" class="text-gray-400 hover:text-gray-600 transition shrink-0">
-                                <i class="fa-solid fa-paperclip"></i>
-                            </button>
                             <input id="chat-input" name="content" type="text" autocomplete="off"
                                    placeholder="Nhập câu hỏi của bạn tại đây..."
                                    class="flex-1 bg-transparent text-sm placeholder-gray-400 focus:outline-none" />
-                            <button type="button" class="text-gray-400 hover:text-gray-600 transition shrink-0">
-                                <i class="fa-solid fa-microphone"></i>
-                            </button>
                             <button id="chat-send" type="submit"
                                     class="flex items-center gap-1.5 text-gray-400 hover:text-blue-600 transition shrink-0">
                                 <i class="fa-regular fa-paper-plane"></i>
