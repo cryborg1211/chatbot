@@ -33,20 +33,20 @@
     <div>
         <div class="flex items-center gap-2 mb-1">
             <i class="fa-solid fa-terminal text-gray-400"></i>
-            <h1 class="text-2xl font-bold text-gray-800">Nhật ký hệ thống</h1>
+            <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-100">Nhật ký hệ thống</h1>
         </div>
-        <p class="text-sm text-gray-500">Theo dõi và giám sát mọi hoạt động trên nền tảng. Hiển thị @Model.Total24h sự kiện trong 24 giờ qua.</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Theo dõi và giám sát mọi hoạt động trên nền tảng. Hiển thị @Model.Total24h sự kiện trong 24 giờ qua.</p>
     </div>
 </div>
 
 <!-- Filter Bar -->
-<form method="get" class="flex items-center gap-3 mb-6 flex-wrap bg-white border border-gray-200 rounded-lg p-3">
+<form method="get" class="flex items-center gap-3 mb-6 flex-wrap bg-white border border-gray-200 rounded-lg p-3 dark:bg-gray-800 dark:border-gray-700">
     <div class="relative flex-1 min-w-[200px]">
         <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
         <input type="text" name="Action" value="@Model.Action" placeholder="Lọc theo mã hành động (e.g. doc.upload)"
-               class="w-full h-10 pl-10 pr-4 bg-white border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition" />
+               class="w-full h-10 pl-10 pr-4 bg-white border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100" />
     </div>
-    <select name="Category" class="h-10 px-3 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400">
+    <select name="Category" class="h-10 px-3 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 dark:bg-gray-900 dark:border-gray-600 dark:text-gray-200">
         <option value="">Tất cả category</option>
         @foreach (var c in Model.KnownCategories)
         {
@@ -54,28 +54,28 @@
         }
     </select>
     <input type="datetime-local" name="FromDate" value="@(Model.FromDate?.ToString("yyyy-MM-ddTHH:mm"))"
-           class="h-10 px-3 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white" />
+           class="h-10 px-3 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white dark:bg-gray-900 dark:border-gray-600 dark:text-gray-200" />
     <input type="datetime-local" name="ToDate" value="@(Model.ToDate?.ToString("yyyy-MM-ddTHH:mm"))"
-           class="h-10 px-3 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white" />
+           class="h-10 px-3 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white dark:bg-gray-900 dark:border-gray-600 dark:text-gray-200" />
     <button type="submit" class="px-5 h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition">Lọc</button>
     <a href="?" class="px-3 h-10 flex items-center text-sm text-gray-500 hover:text-gray-800 transition">Xoá lọc</a>
 </form>
 
 <!-- Activity Log Table -->
-<div class="bg-white rounded-lg border border-gray-200">
-    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+<div class="bg-white rounded-lg border border-gray-200 dark:bg-gray-800 dark:border-gray-700">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         <div>
-            <h2 class="text-base font-bold text-gray-800">Hoạt động hệ thống</h2>
-            <p class="text-sm text-gray-500 mt-0.5">Trang @Model.PageNumber / @Model.TotalPages · @Model.TotalCount sự kiện khớp bộ lọc.</p>
+            <h2 class="text-base font-bold text-gray-800 dark:text-gray-100">Hoạt động hệ thống</h2>
+            <p class="text-sm text-gray-500 mt-0.5 dark:text-gray-400">Trang @Model.PageNumber / @Model.TotalPages · @Model.TotalCount sự kiện khớp bộ lọc.</p>
         </div>
-        <span class="text-xs text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full font-medium border border-blue-100">
+        <span class="text-xs text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full font-medium border border-blue-100 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800">
             @Model.Items.Count bản ghi
         </span>
     </div>
 
     <table class="w-full">
         <thead>
-            <tr class="border-b border-gray-100 bg-gray-50/50">
+            <tr class="border-b border-gray-100 bg-gray-50/50 dark:border-gray-700 dark:bg-gray-900/30">
                 <th class="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3 w-44">Thời gian</th>
                 <th class="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3 w-52">Người dùng</th>
                 <th class="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3 w-44">Hành động</th>
@@ -83,7 +83,7 @@
                 <th class="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3 w-36">Địa chỉ IP</th>
             </tr>
         </thead>
-        <tbody class="divide-y divide-gray-100">
+        <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
             @if (Model.Items.Count == 0)
             {
                 <tr><td colspan="5" class="px-6 py-12 text-center text-sm text-gray-400">Không có sự kiện nào.</td></tr>
@@ -92,8 +92,8 @@
             {
                 var chip = ActionChip(l.Action);
                 var rowBg = l.Severity >= LogSeverity.Error ? "bg-red-50/30" : "";
-                <tr class="hover:bg-gray-50/50 transition @rowBg" title="@l.Action">
-                    <td class="px-6 py-4 text-sm text-gray-600 font-mono">@l.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
+                <tr class="hover:bg-gray-50/50 transition dark:hover:bg-gray-700/30 @rowBg" title="@l.Action">
+                    <td class="px-6 py-4 text-sm text-gray-600 font-mono dark:text-gray-300">@l.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
                     <td class="px-6 py-4">
                         @if (l.UserId is null)
                         {
@@ -101,7 +101,7 @@
                         }
                         else
                         {
-                            <p class="text-sm font-semibold text-gray-800 truncate max-w-[12rem]" title="@l.UserId">@(l.UserFullName ?? l.UserId)</p>
+                            <p class="text-sm font-semibold text-gray-800 truncate max-w-[12rem] dark:text-gray-100" title="@l.UserId">@(l.UserFullName ?? l.UserId)</p>
                             <p class="text-xs text-gray-400">@l.DepartmentId</p>
                         }
                     </td>
@@ -110,20 +110,20 @@
                             <i class="@chip.Icon text-[10px]"></i> @chip.Label
                         </span>
                     </td>
-                    <td class="px-6 py-4 text-sm text-gray-600 truncate max-w-md">
+                    <td class="px-6 py-4 text-sm text-gray-600 truncate max-w-md dark:text-gray-300">
                         @if (l.ResourceType is not null)
                         {
                             <span class="text-xs text-gray-400">@l.ResourceType:</span>
                         }
                         @l.ResourceId
                     </td>
-                    <td class="px-6 py-4 text-sm text-gray-500 font-mono">@l.IpAddress</td>
+                    <td class="px-6 py-4 text-sm text-gray-500 font-mono dark:text-gray-400">@l.IpAddress</td>
                 </tr>
             }
         </tbody>
     </table>
 
-    <div class="flex items-center justify-between px-6 py-4 border-t border-gray-200">
+    <div class="flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700">
         <p class="text-sm text-gray-500">Tổng @Model.TotalCount sự kiện · trang @Model.PageNumber / @Model.TotalPages</p>
         @{
             var prev = Math.Max(1, Model.PageNumber - 1);

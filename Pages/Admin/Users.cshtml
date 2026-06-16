@@ -28,63 +28,63 @@
 <!-- Page Header -->
 <div class="flex items-start justify-between mb-6">
     <div>
-        <h1 class="text-2xl font-bold text-gray-800">Quản lý người dùng</h1>
-        <p class="text-sm text-gray-500 mt-1">Phê duyệt, phân quyền và giám sát trạng thái người dùng trong hệ thống.</p>
+        <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-100">Quản lý người dùng</h1>
+        <p class="text-sm text-gray-500 mt-1 dark:text-gray-400">Phê duyệt, phân quyền và giám sát trạng thái người dùng trong hệ thống.</p>
     </div>
 </div>
 
 <!-- Stats Cards -->
 <div class="grid grid-cols-4 gap-4 mb-8">
-    <div class="bg-white rounded-lg border border-gray-200 p-5">
+    <div class="bg-white rounded-lg border border-gray-200 p-5 dark:bg-gray-800 dark:border-gray-700">
         <div class="flex items-center justify-between mb-3">
             <div class="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
                 <i class="fa-solid fa-users text-blue-500"></i>
             </div>
         </div>
         <p class="text-sm text-gray-500">Tổng người dùng</p>
-        <p class="text-3xl font-bold text-gray-800 mt-1">@Model.TotalUsers</p>
+        <p class="text-3xl font-bold text-gray-800 mt-1 dark:text-gray-100">@Model.TotalUsers</p>
     </div>
-    <div class="bg-white rounded-lg border border-gray-200 p-5">
+    <div class="bg-white rounded-lg border border-gray-200 p-5 dark:bg-gray-800 dark:border-gray-700">
         <div class="flex items-center justify-between mb-3">
             <div class="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center">
                 <i class="fa-solid fa-circle-check text-green-500"></i>
             </div>
         </div>
         <p class="text-sm text-gray-500">Đã kích hoạt</p>
-        <p class="text-3xl font-bold text-gray-800 mt-1">@Model.ActiveCount</p>
+        <p class="text-3xl font-bold text-gray-800 mt-1 dark:text-gray-100">@Model.ActiveCount</p>
     </div>
-    <div class="bg-white rounded-lg border border-gray-200 p-5">
+    <div class="bg-white rounded-lg border border-gray-200 p-5 dark:bg-gray-800 dark:border-gray-700">
         <div class="flex items-center justify-between mb-3">
             <div class="w-10 h-10 bg-yellow-50 rounded-lg flex items-center justify-center">
                 <i class="fa-regular fa-clock text-yellow-500"></i>
             </div>
         </div>
         <p class="text-sm text-gray-500">Chờ phê duyệt</p>
-        <p class="text-3xl font-bold text-gray-800 mt-1">@Model.PendingCount</p>
+        <p class="text-3xl font-bold text-gray-800 mt-1 dark:text-gray-100">@Model.PendingCount</p>
     </div>
-    <div class="bg-white rounded-lg border border-gray-200 p-5">
+    <div class="bg-white rounded-lg border border-gray-200 p-5 dark:bg-gray-800 dark:border-gray-700">
         <div class="flex items-center justify-between mb-3">
             <div class="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center">
                 <i class="fa-solid fa-lock text-red-500"></i>
             </div>
         </div>
         <p class="text-sm text-gray-500">Bị khoá</p>
-        <p class="text-3xl font-bold text-gray-800 mt-1">@Model.LockedCount</p>
+        <p class="text-3xl font-bold text-gray-800 mt-1 dark:text-gray-100">@Model.LockedCount</p>
     </div>
 </div>
 
 <!-- User Table -->
-<div class="bg-white rounded-lg border border-gray-200">
+<div class="bg-white rounded-lg border border-gray-200 dark:bg-gray-800 dark:border-gray-700">
     <!-- Table Header Bar (search + dept filter via GET form) -->
-    <form method="get" class="flex items-center justify-between px-6 py-4 border-b border-gray-200 gap-3">
+    <form method="get" class="flex items-center justify-between px-6 py-4 border-b border-gray-200 gap-3 dark:border-gray-700">
         <div class="flex items-center gap-3 flex-1">
-            <h2 class="text-lg font-bold text-gray-800 whitespace-nowrap">Danh sách người dùng</h2>
+            <h2 class="text-lg font-bold text-gray-800 whitespace-nowrap dark:text-gray-100">Danh sách người dùng</h2>
             <div class="relative">
                 <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
                 <input type="text" name="Search" value="@Model.Search" placeholder="Tìm theo tên hoặc email..."
-                       class="w-64 h-9 pl-9 pr-3 bg-gray-50 border border-gray-200 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition" />
+                       class="w-64 h-9 pl-9 pr-3 bg-gray-50 border border-gray-200 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100" />
             </div>
-            <select name="DepartmentId" class="h-9 px-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400">
+            <select name="DepartmentId" class="h-9 px-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 dark:bg-gray-900 dark:border-gray-600 dark:text-gray-200">
                 <option value="">Tất cả phòng ban</option>
                 @foreach (var d in Model.Departments)
                 {
@@ -98,7 +98,7 @@
 
     <table class="w-full">
         <thead>
-            <tr class="border-b border-gray-100 bg-gray-50/50">
+            <tr class="border-b border-gray-100 bg-gray-50/50 dark:border-gray-700 dark:bg-gray-900/30">
                 <th class="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">Tên người dùng</th>
                 <th class="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">Email</th>
                 <th class="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">Phòng ban</th>
@@ -106,7 +106,7 @@
                 <th class="text-right text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">Thao tác</th>
             </tr>
         </thead>
-        <tbody class="divide-y divide-gray-100">
+        <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
             @if (Model.Items.Count == 0)
             {
                 <tr><td colspan="5" class="px-6 py-12 text-center text-sm text-gray-400">Không có người dùng nào khớp bộ lọc.</td></tr>
@@ -114,18 +114,18 @@
             @foreach (var u in Model.Items)
             {
                 var chip = StatusChip(u.Status);
-                <tr class="hover:bg-gray-50/50 transition">
+                <tr class="hover:bg-gray-50/50 transition dark:hover:bg-gray-700/30">
                     <td class="px-6 py-4">
                         <div class="flex items-center gap-3">
                             <div class="w-9 h-9 rounded-full @AvatarPalette(u.Id) flex items-center justify-center shrink-0">
                                 <i class="fa-solid fa-user text-xs"></i>
                             </div>
-                            <p class="text-sm font-semibold text-gray-800">@u.FullName</p>
+                            <p class="text-sm font-semibold text-gray-800 dark:text-gray-100">@u.FullName</p>
                         </div>
                     </td>
-                    <td class="px-6 py-4 text-sm text-gray-600">@u.Email</td>
+                    <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">@u.Email</td>
                     <td class="px-6 py-4">
-                        <span class="px-2.5 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium whitespace-nowrap" title="@u.DepartmentId">@u.DepartmentName</span>
+                        <span class="px-2.5 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium whitespace-nowrap dark:bg-gray-700 dark:text-gray-300" title="@u.DepartmentId">@u.DepartmentName</span>
                     </td>
                     <td class="px-6 py-4">
                         <span class="text-sm font-medium @chip.Text">@chip.Label</span>
@@ -173,7 +173,7 @@
     </table>
 
     <!-- Pagination -->
-    <nav aria-label="Pagination" class="flex items-center justify-between px-6 py-4 border-t border-gray-200">
+    <nav aria-label="Pagination" class="flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700">
         @{
             var pageSize = chatbot.Pages.Admin.UsersModel.PageSize;
             var startItem = (Model.PageNumber - 1) * pageSize + 1;

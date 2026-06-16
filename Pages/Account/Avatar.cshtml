@@ -1,0 +1,129 @@
+@page
+@model chatbot.Pages.Account.AvatarModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Đổi ảnh đại diện - LD3 AI Chatbot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' };
+        if (localStorage.getItem('ld3-theme') === 'dark') {
+            document.documentElement.classList.add('dark');
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+</head>
+<body class="bg-gray-100 text-gray-800 antialiased min-h-screen flex flex-col dark:bg-gray-900 dark:text-gray-100">
+
+    <!-- ==================== TOP BAR ==================== -->
+    <header class="bg-white border-b border-gray-200 px-6 shrink-0 dark:bg-gray-800 dark:border-gray-700">
+        <div class="h-14 flex items-center justify-between">
+            <a href="/Chat" class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center dark:bg-blue-900/40">
+                    <i class="fa-solid fa-heart-pulse text-blue-500"></i>
+                </div>
+                <span class="text-base font-bold text-blue-600 dark:text-blue-400">LD3 AI Chatbot</span>
+            </a>
+            <a href="/Chat" class="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition flex items-center gap-1.5">
+                <i class="fa-solid fa-arrow-left text-xs"></i>
+                <span>Quay lại</span>
+            </a>
+        </div>
+    </header>
+
+    <!-- ==================== MAIN CONTENT ==================== -->
+    <main class="flex-1 flex flex-col items-center justify-center px-4 py-8">
+
+        <div class="w-full max-w-md bg-white rounded-xl shadow-sm border border-gray-100 px-8 pt-8 pb-7 dark:bg-gray-800 dark:border-gray-700">
+
+            <div class="text-center mb-6">
+                <h1 class="text-xl font-bold text-gray-800 dark:text-gray-100">Đổi ảnh đại diện</h1>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1.5">
+                    Tải lên ảnh PNG, JPG, WEBP hoặc GIF (tối đa 2&nbsp;MB)
+                </p>
+            </div>
+
+            @if (Model.Succeeded)
+            {
+                <div class="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700 flex items-center gap-2 dark:bg-green-900/20 dark:border-green-800 dark:text-green-300">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <span>Cập nhật ảnh đại diện thành công.</span>
+                </div>
+            }
+
+            <form method="post" enctype="multipart/form-data" class="space-y-5">
+                @if (!ViewData.ModelState.IsValid && ViewData.ModelState[string.Empty]?.Errors.Count > 0)
+                {
+                    <div asp-validation-summary="ModelOnly"
+                         class="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300"></div>
+                }
+
+                <!-- Preview -->
+                <div class="flex flex-col items-center gap-3">
+                    <div class="w-24 h-24 rounded-full ring-2 ring-blue-100 dark:ring-blue-900 overflow-hidden bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center">
+                        <img id="avatarPreview"
+                             src="@(Model.CurrentAvatarPath ?? "")"
+                             alt="Ảnh đại diện"
+                             class="w-full h-full object-cover @(string.IsNullOrEmpty(Model.CurrentAvatarPath) ? "hidden" : "")" />
+                        <i id="avatarPlaceholder"
+                           class="fa-solid fa-user text-white text-3xl @(string.IsNullOrEmpty(Model.CurrentAvatarPath) ? "" : "hidden")"></i>
+                    </div>
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-300">@Model.DisplayName</p>
+                </div>
+
+                <!-- File input -->
+                <div>
+                    <label class="block">
+                        <span class="block text-sm font-semibold text-gray-700 mb-1.5 dark:text-gray-200">Chọn ảnh mới</span>
+                        <input asp-for="Upload" type="file" accept="image/png,image/jpeg,image/webp,image/gif"
+                               class="block w-full text-sm text-gray-600 dark:text-gray-300
+                                      file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0
+                                      file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-600
+                                      hover:file:bg-blue-100 dark:file:bg-blue-900/40 dark:file:text-blue-300
+                                      cursor-pointer" />
+                    </label>
+                    <span asp-validation-for="Upload" class="text-xs text-red-500 mt-1 block"></span>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex items-center gap-3 pt-1">
+                    <button type="submit"
+                            class="flex-1 h-11 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white font-semibold rounded-lg shadow-sm hover:shadow transition">
+                        Lưu ảnh đại diện
+                    </button>
+                    @if (!string.IsNullOrEmpty(Model.CurrentAvatarPath))
+                    {
+                        <button type="submit" asp-page-handler="Remove"
+                                class="h-11 px-4 border border-red-200 text-red-600 hover:bg-red-50 rounded-lg text-sm font-medium transition dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20">
+                            Gỡ ảnh
+                        </button>
+                    }
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <script>
+        // Live preview of the chosen file before upload.
+        (function () {
+            const input = document.getElementById('Upload');
+            const img = document.getElementById('avatarPreview');
+            const placeholder = document.getElementById('avatarPlaceholder');
+            input?.addEventListener('change', function () {
+                const file = input.files && input.files[0];
+                if (!file) return;
+                const url = URL.createObjectURL(file);
+                img.src = url;
+                img.classList.remove('hidden');
+                placeholder?.classList.add('hidden');
+            });
+        })();
+    </script>
+
+</body>
+</html>

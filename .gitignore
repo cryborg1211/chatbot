@@ -48,7 +48,7 @@ venv.bak/
 worker/tmp_uploads/
 
 # =========================
-# 4. Data Files
+# 4. Mock data Files
 # =========================
 /data/*
 !/data/.gitkeep

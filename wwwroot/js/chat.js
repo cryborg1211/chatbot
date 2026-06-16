@@ -184,10 +184,10 @@
                 <i class="fa-solid fa-robot text-blue-600 text-xs"></i>
             </div>
             <div class="flex-1">
-                <div class="bg-white border border-gray-200 rounded-xl rounded-tl-sm p-4 shadow-sm">
+                <div class="bg-white border border-gray-200 rounded-xl rounded-tl-sm p-4 shadow-sm dark:bg-gray-800 dark:border-gray-700">
                     <div data-sources class="hidden flex-wrap gap-1.5 mb-3"></div>
-                    <div data-think class="hidden text-xs text-gray-400 italic opacity-75 mb-3 pl-2 border-l-2 border-gray-200 whitespace-pre-wrap"></div>
-                    <div data-answer class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap"></div>
+                    <div data-think class="hidden text-xs text-gray-400 italic opacity-75 mb-3 pl-2 border-l-2 border-gray-200 whitespace-pre-wrap dark:border-gray-600"></div>
+                    <div data-answer class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap dark:text-gray-200"></div>
                     <span data-typing class="inline-block w-2 h-2 rounded-full bg-blue-400 animate-pulse ml-0.5 align-middle"></span>
                 </div>
                 <p class="text-xs text-gray-400 mt-2 flex items-center gap-1">

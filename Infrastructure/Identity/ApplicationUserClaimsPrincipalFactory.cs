@@ -47,6 +47,13 @@ public class ApplicationUserClaimsPrincipalFactory
             identity.AddClaim(new Claim(AppClaimTypes.FullName, user.FullName));
         }
 
+        // Avatar claim — lets the navbar render the image without a DB hit.
+        // Refreshed via SignInManager.RefreshSignInAsync after an avatar change.
+        if (!string.IsNullOrWhiteSpace(user.AvatarPath))
+        {
+            identity.AddClaim(new Claim(AppClaimTypes.AvatarPath, user.AvatarPath));
+        }
+
         return identity;
     }
 }

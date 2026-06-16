@@ -22,6 +22,14 @@ public class ApplicationUser : IdentityUser
     [MaxLength(20)]
     public string DepartmentId { get; set; } = default!;
 
+    /// <summary>
+    /// Web-relative path to the user's uploaded avatar image
+    /// (e.g. <c>/uploads/avatars/{guid}.png</c>), or <c>null</c> when the
+    /// user has not set one — in which case the UI falls back to an icon.
+    /// </summary>
+    [MaxLength(400)]
+    public string? AvatarPath { get; set; }
+
     // ---- Navigation ----
     public Department? Department { get; set; }
 }
