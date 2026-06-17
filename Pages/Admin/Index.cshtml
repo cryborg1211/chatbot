@@ -1,14 +1,7 @@
 @page "/admin"
 @model chatbot.Pages.Admin.AdminIndexModel
-@using chatbot.Infrastructure.Authorization
-@using chatbot.Infrastructure.Identity
 @{
     Layout = null;
-
-    var displayName = User?.FindFirst(AppClaimTypes.FullName)?.Value ?? "Người dùng";
-    var isAdmin     = User?.IsInRole(Roles.Admin) ?? false;
-    var roleLabel   = isAdmin ? "Admin" : "Cán bộ CNTT";
-    var avatarPath  = User?.FindFirst(AppClaimTypes.AvatarPath)?.Value;
 
     (string Bg, string Text, string Label) StatusChip(chatbot.Pages.Admin.UserStatus s) => s switch
     {
@@ -36,13 +29,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Trang quản trị - LD3 AI Chatbot</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        // Shared class-based dark mode, applied before first paint to avoid flash.
-        tailwind.config = { darkMode: 'class' };
-        if (localStorage.getItem('ld3-theme') === 'dark') {
-            document.documentElement.classList.add('dark');
-        }
-    </script>
+    <partial name="_DarkModeHead" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 </head>
 <body class="bg-gray-50 text-gray-800 antialiased dark:bg-gray-900 dark:text-gray-100">
@@ -52,12 +39,9 @@
         <aside class="w-64 bg-white border-r border-gray-200 flex flex-col shrink-0 dark:bg-gray-800 dark:border-gray-700">
 
             <!-- Logo -->
-            <div class="h-16 flex items-center gap-2.5 px-5 border-b border-gray-100 dark:border-gray-700">
-                <div class="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center shrink-0 dark:bg-blue-900/40">
-                    <i class="fa-solid fa-heart-pulse text-blue-500 text-lg"></i>
-                </div>
-                <span class="text-lg font-bold text-blue-600 tracking-tight dark:text-blue-400">LD3 AI Chatbot</span>
-            </div>
+            <a href="/Chat" class="h-16 flex items-center gap-2.5 px-5 border-b border-gray-100 dark:border-gray-700">
+                <img src="~/logo/IDT.webp" alt="LD3 AI Chatbot" class="h-10 w-auto object-contain" />
+            </a>
 
             <!-- New Chat Button -->
             <div class="px-4 pt-4 pb-2">
@@ -72,19 +56,18 @@
             <div class="flex-1 overflow-y-auto px-3 pt-2">
 
                 <!-- Admin Navigation -->
-                <p class="px-2 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Quản trị</p>
                 <nav class="space-y-0.5 mb-4">
                     <a href="/admin"
                        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
                         <i class="fa-solid fa-users text-sm w-5 text-center text-blue-500"></i>
                         <span>Quản lý người dùng</span>
                     </a>
-                    <a href="/Admin/Feedback"
+                    <a href="/admin/feedback"
                        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition dark:text-gray-300 dark:hover:bg-gray-700/50">
                         <i class="fa-regular fa-comment-dots text-sm w-5 text-center text-gray-400"></i>
                         <span>Phản hồi &amp; Đánh giá</span>
                     </a>
-                    <a href="/Admin/Logs"
+                    <a href="/admin/logs"
                        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition dark:text-gray-300 dark:hover:bg-gray-700/50">
                         <i class="fa-solid fa-clock-rotate-left text-sm w-5 text-center text-gray-400"></i>
                         <span>Nhật ký hệ thống</span>
@@ -93,20 +76,6 @@
 
             </div>
 
-            <!-- Bottom: Settings & Logout -->
-            <div class="border-t border-gray-200 px-3 py-3 space-y-0.5 dark:border-gray-700">
-                <span class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-400 cursor-not-allowed opacity-50" title="Chưa khả dụng">
-                    <i class="fa-solid fa-gear text-gray-400 text-sm w-5 text-center"></i>
-                    <span>Cài đặt hệ thống</span>
-                </span>
-                <form method="post" action="/Account/Logout">
-                    <button type="submit"
-                            class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-red-500 hover:bg-red-50 transition w-full dark:text-red-400 dark:hover:bg-red-900/20">
-                        <i class="fa-solid fa-right-from-bracket text-red-400 text-sm w-5 text-center"></i>
-                        <span>Đăng xuất</span>
-                    </button>
-                </form>
-            </div>
         </aside>
 
         <!-- ==================== RIGHT AREA ==================== -->
@@ -122,66 +91,8 @@
                         <i class="fa-regular fa-bell text-lg"></i>
                     </span>
                     <div class="h-6 w-px bg-gray-200 dark:bg-gray-700"></div>
-                    <!-- ==================== PROFILE DROPDOWN ==================== -->
-                    <div class="relative" id="profileMenuWrapper">
-                        <button type="button" id="profileMenuButton"
-                                class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition focus:outline-none"
-                                aria-haspopup="true" aria-expanded="false" aria-controls="profileMenu">
-                            <div class="text-right leading-tight">
-                                <p class="text-sm font-medium text-gray-700 dark:text-gray-100">@displayName</p>
-                                <p class="text-xs text-gray-400">@roleLabel</p>
-                            </div>
-                            <div class="w-9 h-9 rounded-full overflow-hidden bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center ring-2 ring-blue-100 dark:ring-blue-900">
-                                @if (!string.IsNullOrEmpty(avatarPath))
-                                {
-                                    <img src="@avatarPath" alt="Ảnh đại diện" class="w-full h-full object-cover" />
-                                }
-                                else
-                                {
-                                    <i class="fa-solid fa-user text-white text-xs"></i>
-                                }
-                            </div>
-                            <i id="profileMenuChevron" class="fa-solid fa-chevron-down text-xs text-gray-400 transition-transform duration-200"></i>
-                        </button>
-
-                        <div id="profileMenu" role="menu" aria-labelledby="profileMenuButton"
-                             class="hidden absolute right-0 mt-2 w-64 origin-top-right bg-white dark:bg-gray-800 rounded-xl shadow-lg ring-1 ring-black/5 dark:ring-white/10 py-2 z-50">
-                            <div class="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-                                <p class="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">@displayName</p>
-                                <span class="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-xs font-medium @(isAdmin ? "bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300" : "bg-blue-50 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300")">
-                                    <i class="fa-solid @(isAdmin ? "fa-shield-halved" : "fa-id-badge") text-[10px]"></i>
-                                    @roleLabel
-                                </span>
-                            </div>
-                            <div class="py-1">
-                                <a href="/Account/Avatar" role="menuitem" class="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
-                                    <i class="fa-solid fa-image w-5 text-center text-gray-400"></i>
-                                    <span>Đổi ảnh đại diện</span>
-                                </a>
-                                <a href="/Account/ChangePassword" role="menuitem" class="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
-                                    <i class="fa-solid fa-key w-5 text-center text-gray-400"></i>
-                                    <span>Đổi mật khẩu</span>
-                                </a>
-                                <button type="button" id="themeToggle" role="menuitemcheckbox"
-                                        class="w-full flex items-center justify-between gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
-                                    <span class="flex items-center gap-3">
-                                        <i class="fa-solid fa-circle-half-stroke w-5 text-center text-gray-400"></i>
-                                        <span>Chế độ Tối/Sáng</span>
-                                    </span>
-                                    <span class="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full bg-gray-200 dark:bg-blue-600 transition-colors">
-                                        <span class="inline-block h-4 w-4 transform rounded-full bg-white shadow translate-x-0.5 dark:translate-x-[18px] transition-transform"></span>
-                                    </span>
-                                </button>
-                            </div>
-                            <div class="border-t border-gray-100 dark:border-gray-700 my-1"></div>
-                            <form method="post" action="/Account/Logout">
-                                <button type="submit" role="menuitem" class="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 transition">
-                                    <i class="fa-solid fa-right-from-bracket w-5 text-center"></i>
-                                    <span>Đăng xuất</span>
-                                </button>
-                            </form>
-                        </div>
-                    </div>
+                    <!-- Profile dropdown (shared partial) -->
+                    <partial name="_NavbarPartial" />
                 </div>
             </header>
 
@@ -346,12 +257,12 @@
                         <div class="flex items-center gap-1">
                             @if (Model.PageNumber <= 1)
                             {
-                                <span class="px-3 py-1.5 text-sm text-gray-400 rounded-lg border border-gray-200 pointer-events-none opacity-50">Trước</span>
+                                <span class="px-3 py-1.5 text-sm text-gray-400 rounded-lg border border-gray-200 pointer-events-none opacity-50 dark:border-gray-700">Trước</span>
                             }
                             else
                             {
                                 <a href="?Search=@Model.Search&DepartmentId=@Model.DepartmentId&PageNumber=@(Model.PageNumber - 1)"
-                                   class="px-3 py-1.5 text-sm text-gray-600 rounded-lg border border-gray-300 hover:bg-gray-50 transition">Trước</a>
+                                   class="px-3 py-1.5 text-sm text-gray-600 rounded-lg border border-gray-300 hover:bg-gray-50 transition dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700/50">Trước</a>
                             }
 
                             @{
@@ -383,18 +294,18 @@
                                 else
                                 {
                                     <a href="?Search=@Model.Search&DepartmentId=@Model.DepartmentId&PageNumber=@p"
-                                       class="w-8 h-8 flex items-center justify-center rounded-lg text-sm text-gray-600 border border-gray-300 hover:bg-gray-50 transition">@p</a>
+                                       class="w-8 h-8 flex items-center justify-center rounded-lg text-sm text-gray-600 border border-gray-300 hover:bg-gray-50 transition dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700/50">@p</a>
                                 }
                             }
 
                             @if (Model.PageNumber >= Model.TotalPages)
                             {
-                                <span class="px-3 py-1.5 text-sm text-gray-400 rounded-lg border border-gray-200 pointer-events-none opacity-50">Sau</span>
+                                <span class="px-3 py-1.5 text-sm text-gray-400 rounded-lg border border-gray-200 pointer-events-none opacity-50 dark:border-gray-700">Sau</span>
                             }
                             else
                             {
                                 <a href="?Search=@Model.Search&DepartmentId=@Model.DepartmentId&PageNumber=@(Model.PageNumber + 1)"
-                                   class="px-3 py-1.5 text-sm text-gray-600 rounded-lg border border-gray-300 hover:bg-gray-50 transition">Sau</a>
+                                   class="px-3 py-1.5 text-sm text-gray-600 rounded-lg border border-gray-300 hover:bg-gray-50 transition dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700/50">Sau</a>
                             }
                         </div>
                     </nav>
@@ -407,36 +318,5 @@
             </footer>
         </div>
     </div>
-
-    <script>
-        // Profile dropdown: toggle, outside-click + Escape to close, theme switch.
-        (function () {
-            const btn = document.getElementById('profileMenuButton');
-            const menu = document.getElementById('profileMenu');
-            const chevron = document.getElementById('profileMenuChevron');
-            const themeToggle = document.getElementById('themeToggle');
-            if (!btn || !menu) return;
-            function closeMenu() {
-                menu.classList.add('hidden');
-                btn.setAttribute('aria-expanded', 'false');
-                chevron?.classList.remove('rotate-180');
-            }
-            btn.addEventListener('click', function (e) {
-                e.stopPropagation();
-                const nowHidden = menu.classList.toggle('hidden');
-                btn.setAttribute('aria-expanded', String(!nowHidden));
-                chevron?.classList.toggle('rotate-180', !nowHidden);
-            });
-            document.addEventListener('click', function (e) {
-                if (!menu.classList.contains('hidden') && !menu.contains(e.target) && !btn.contains(e.target)) closeMenu();
-            });
-            document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeMenu(); });
-            themeToggle?.addEventListener('click', function (e) {
-                e.stopPropagation();
-                const isDark = document.documentElement.classList.toggle('dark');
-                localStorage.setItem('ld3-theme', isDark ? 'dark' : 'light');
-            });
-        })();
-    </script>
 </body>
 </html>

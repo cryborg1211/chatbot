@@ -23,4 +23,13 @@
     </PackageReference>
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Avatars and other user uploads are written under wwwroot/uploads at
+         RUNTIME by the app. Exclude that folder from the file watcher: dotnet
+         watch's Hot Reload (HotReloadMSBuildWorkspace) crashes when the running
+         app creates files inside the watched project tree. UseStaticFiles still
+         serves these from disk, so the avatar image keeps working. -->
+    <Watch Remove="wwwroot\uploads\**\*" />
+  </ItemGroup>
+
 </Project>

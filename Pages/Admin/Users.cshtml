@@ -183,12 +183,12 @@
         <div class="flex items-center gap-1">
             @if (Model.PageNumber <= 1)
             {
-                <span class="px-3 py-1.5 text-sm text-gray-400 rounded-lg border border-gray-200 pointer-events-none opacity-50">Truoc</span>
+                <span class="px-3 py-1.5 text-sm text-gray-400 rounded-lg border border-gray-200 pointer-events-none opacity-50 dark:border-gray-700">Truoc</span>
             }
             else
             {
                 <a href="?Search=@Model.Search&DepartmentId=@Model.DepartmentId&PageNumber=@(Model.PageNumber - 1)"
-                   class="px-3 py-1.5 text-sm text-gray-600 rounded-lg border border-gray-300 hover:bg-gray-50 transition">Truoc</a>
+                   class="px-3 py-1.5 text-sm text-gray-600 rounded-lg border border-gray-300 hover:bg-gray-50 transition dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700/50">Truoc</a>
             }
 
             @{
@@ -220,18 +220,18 @@
                 else
                 {
                     <a href="?Search=@Model.Search&DepartmentId=@Model.DepartmentId&PageNumber=@p"
-                       class="w-8 h-8 flex items-center justify-center rounded-lg text-sm text-gray-600 border border-gray-300 hover:bg-gray-50 transition">@p</a>
+                       class="w-8 h-8 flex items-center justify-center rounded-lg text-sm text-gray-600 border border-gray-300 hover:bg-gray-50 transition dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700/50">@p</a>
                 }
             }
 
             @if (Model.PageNumber >= Model.TotalPages)
             {
-                <span class="px-3 py-1.5 text-sm text-gray-400 rounded-lg border border-gray-200 pointer-events-none opacity-50">Sau</span>
+                <span class="px-3 py-1.5 text-sm text-gray-400 rounded-lg border border-gray-200 pointer-events-none opacity-50 dark:border-gray-700">Sau</span>
             }
             else
             {
                 <a href="?Search=@Model.Search&DepartmentId=@Model.DepartmentId&PageNumber=@(Model.PageNumber + 1)"
-                   class="px-3 py-1.5 text-sm text-gray-600 rounded-lg border border-gray-300 hover:bg-gray-50 transition">Sau</a>
+                   class="px-3 py-1.5 text-sm text-gray-600 rounded-lg border border-gray-300 hover:bg-gray-50 transition dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700/50">Sau</a>
             }
         </div>
     </nav>

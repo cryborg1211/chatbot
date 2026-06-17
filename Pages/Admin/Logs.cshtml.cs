@@ -86,6 +86,34 @@ public sealed class LogsModel : PageModel
                 .Select(u => new { u.Id, u.FullName })
                 .ToDictionaryAsync(u => u.Id, u => u.FullName, cancellationToken);
 
+        // Resolve document resource ids → original file names so the log shows
+        // a human-readable name instead of the raw UUID. Deleted documents
+        // fall back to the id (handled in the projection below).
+        var docIds = pageItems
+            .Where(r => r.ResourceType == nameof(Document) && !string.IsNullOrWhiteSpace(r.ResourceId))
+            .Select(r => r.ResourceId!)
+            .Distinct()
+            .ToList();
+
+        var docNameMap = new Dictionary<string, string>();
+        if (docIds.Count > 0)
+        {
+            var guidIds = docIds
+                .Select(s => Guid.TryParse(s, out var g) ? g : (Guid?)null)
+                .Where(g => g.HasValue)
+                .Select(g => g!.Value)
+                .ToList();
+
+            if (guidIds.Count > 0)
+            {
+                docNameMap = await _db.Documents
+                    .AsNoTracking()
+                    .Where(d => guidIds.Contains(d.Id))
+                    .Select(d => new { d.Id, d.OriginalFileName })
+                    .ToDictionaryAsync(d => d.Id.ToString(), d => d.OriginalFileName, cancellationToken);
+            }
+        }
+
         Items = pageItems.Select(r => new LogRow(
             r.Id,
             r.Timestamp,
@@ -97,6 +125,9 @@ public sealed class LogsModel : PageModel
             r.DepartmentId,
             r.ResourceType,
             r.ResourceId,
+            r.ResourceType == nameof(Document) && r.ResourceId is not null
+                ? docNameMap.GetValueOrDefault(r.ResourceId)
+                : null,
             r.IpAddress,
             r.Success)).ToList();
     }
@@ -113,5 +144,6 @@ public sealed record LogRow(
     string?      DepartmentId,
     string?      ResourceType,
     string?      ResourceId,
+    string?      ResourceName,
     string?      IpAddress,
     bool         Success);

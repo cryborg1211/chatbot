@@ -1,0 +1,12 @@
+@*
+    Shared dark-mode bootstrap. Render inside <head> AFTER the Tailwind CDN
+    script on every page. Enables class-based dark mode and applies the
+    persisted theme before first paint so there is no light→dark flash.
+    Single source of truth — do not inline this script per page.
+*@
+<script>
+    tailwind.config = { darkMode: 'class' };
+    if (localStorage.getItem('ld3-theme') === 'dark') {
+        document.documentElement.classList.add('dark');
+    }
+</script>

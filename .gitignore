@@ -73,3 +73,6 @@ scracth/
 # =========================
 .DS_Store
 Thumbs.db
+
+# Runtime user uploads (avatars, etc.) - not source, served from disk
+wwwroot/uploads/

@@ -43,11 +43,11 @@
 <form method="get" class="flex items-center gap-3 mb-6 flex-wrap bg-white border border-gray-200 rounded-lg p-3 dark:bg-gray-800 dark:border-gray-700">
     <div class="relative flex-1 min-w-[200px]">
         <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
-        <input type="text" name="Action" value="@Model.Action" placeholder="Lọc theo mã hành động (e.g. doc.upload)"
+        <input type="text" name="Action" value="@Model.Action" placeholder="Lọc theo mã hành động (ví dụ: doc.upload)"
                class="w-full h-10 pl-10 pr-4 bg-white border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100" />
     </div>
     <select name="Category" class="h-10 px-3 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 dark:bg-gray-900 dark:border-gray-600 dark:text-gray-200">
-        <option value="">Tất cả category</option>
+        <option value="">Tất cả danh mục</option>
         @foreach (var c in Model.KnownCategories)
         {
             <option value="@c" selected="@(Model.Category == c)">@c</option>
@@ -58,7 +58,7 @@
     <input type="datetime-local" name="ToDate" value="@(Model.ToDate?.ToString("yyyy-MM-ddTHH:mm"))"
            class="h-10 px-3 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white dark:bg-gray-900 dark:border-gray-600 dark:text-gray-200" />
     <button type="submit" class="px-5 h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition">Lọc</button>
-    <a href="?" class="px-3 h-10 flex items-center text-sm text-gray-500 hover:text-gray-800 transition">Xoá lọc</a>
+    <a href="?" class="px-3 h-10 flex items-center text-sm text-gray-500 hover:text-gray-800 transition dark:text-gray-400 dark:hover:text-gray-100">Xoá lọc</a>
 </form>
 
 <!-- Activity Log Table -->
@@ -110,12 +110,22 @@
                             <i class="@chip.Icon text-[10px]"></i> @chip.Label
                         </span>
                     </td>
-                    <td class="px-6 py-4 text-sm text-gray-600 truncate max-w-md dark:text-gray-300">
+                    <td class="px-6 py-4 text-sm text-gray-600 truncate max-w-md dark:text-gray-300" title="@l.ResourceId">
                         @if (l.ResourceType is not null)
                         {
                             <span class="text-xs text-gray-400">@l.ResourceType:</span>
                         }
-                        @l.ResourceId
+                        @if (l.ResourceName is not null)
+                        {
+                            <span class="inline-flex items-center gap-1">
+                                <i class="fa-regular fa-file-lines text-gray-400 text-xs"></i>
+                                @l.ResourceName
+                            </span>
+                        }
+                        else
+                        {
+                            @l.ResourceId
+                        }
                     </td>
                     <td class="px-6 py-4 text-sm text-gray-500 font-mono dark:text-gray-400">@l.IpAddress</td>
                 </tr>
@@ -131,9 +141,9 @@
             string Qs(int p) => $"?Action={Model.Action}&Category={Model.Category}&FromDate={Model.FromDate?.ToString("yyyy-MM-ddTHH:mm")}&ToDate={Model.ToDate?.ToString("yyyy-MM-ddTHH:mm")}&PageNumber={p}";
         }
         <div class="flex items-center gap-1">
-            <a href="@Qs(prev)" class="px-3 py-1.5 text-sm text-gray-600 rounded-lg border border-gray-300 hover:bg-gray-50 transition">Trước</a>
+            <a href="@Qs(prev)" class="px-3 py-1.5 text-sm text-gray-600 rounded-lg border border-gray-300 hover:bg-gray-50 transition dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700/50">Trước</a>
             <span class="w-8 h-8 flex items-center justify-center rounded-lg text-sm bg-blue-600 text-white font-medium">@Model.PageNumber</span>
-            <a href="@Qs(next)" class="px-3 py-1.5 text-sm text-gray-600 rounded-lg border border-gray-300 hover:bg-gray-50 transition">Sau</a>
+            <a href="@Qs(next)" class="px-3 py-1.5 text-sm text-gray-600 rounded-lg border border-gray-300 hover:bg-gray-50 transition dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700/50">Sau</a>
         </div>
     </div>
 </div>
