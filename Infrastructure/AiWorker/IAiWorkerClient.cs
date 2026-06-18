@@ -46,6 +46,14 @@ public interface IAiWorkerClient
     Task DeleteDocumentAsync(
         Guid documentId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Read LLM backend status from <c>GET /llm/status</c> — active model,
+    /// whether the local Ollama instance is reachable, and the installed
+    /// model list. Throws <see cref="AiWorkerException"/> when the worker
+    /// itself is unreachable.
+    /// </summary>
+    Task<LlmStatus> GetLlmStatusAsync(CancellationToken cancellationToken = default);
 }
 
 /// <summary>Thrown when the worker is unreachable or returns an unparseable response.</summary>

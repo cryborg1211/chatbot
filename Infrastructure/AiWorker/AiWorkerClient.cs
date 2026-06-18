@@ -22,6 +22,7 @@ public sealed class AiWorkerClient : IAiWorkerClient
     private const string IngestPath   = "ingest";
     private const string QueryPath    = "query";
     private const string DeletePath   = "documents/delete";
+    private const string LlmStatusPath = "llm/status";
 
     /// <summary>
     /// Shared JSON options. snake_case to match Python's Pydantic models,
@@ -161,6 +162,48 @@ public sealed class AiWorkerClient : IAiWorkerClient
                 (int)response.StatusCode, body);
             throw new AiWorkerException(
                 $"AI worker delete returned HTTP {(int)response.StatusCode}: {body}");
+        }
+    }
+
+    // ==================================================================
+    //  LLM status (unary, JSON)
+    // ==================================================================
+
+    public async Task<LlmStatus> GetLlmStatusAsync(CancellationToken cancellationToken = default)
+    {
+        HttpResponseMessage response;
+        try
+        {
+            response = await _http.GetAsync(LlmStatusPath, cancellationToken);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "AI worker unreachable at {BaseUrl} (llm status)", _http.BaseAddress);
+            throw new AiWorkerException("AI worker is unreachable.", ex);
+        }
+        catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogError(ex, "AI worker timed out (llm status) after {Seconds}s", _options.TimeoutSeconds);
+            throw new AiWorkerException("AI worker timed out.", ex);
+        }
+
+        using (response)
+        {
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadAsStringAsync(cancellationToken);
+                _logger.LogError(
+                    "AI worker /llm/status returned {Status}: {Body}",
+                    (int)response.StatusCode, body);
+                throw new AiWorkerException(
+                    $"AI worker /llm/status returned HTTP {(int)response.StatusCode}: {body}");
+            }
+
+            var result = await response.Content.ReadFromJsonAsync<LlmStatus>(JsonOpts, cancellationToken);
+            if (result is null)
+                throw new AiWorkerException("AI worker returned empty body for /llm/status.");
+
+            return result;
         }
     }
 

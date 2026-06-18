@@ -2,7 +2,7 @@
 
 Created: 2026-06-18
 Parent: `ai-settings-umbrella_PLAN_18-06-26.md`
-Status: ACTIVE — UI shell done, backend pending
+Status: COMPLETE (2026-06-18) — UI shell + backend done; pending a live restart smoke test
 Complexity: SIMPLE–MEDIUM
 
 ---

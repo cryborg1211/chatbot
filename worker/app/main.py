@@ -22,7 +22,7 @@ from qdrant_client import QdrantClient
 
 from arq.connections import create_pool
 
-from .api import documents, health, ingest, query
+from .api import documents, health, ingest, llm, query
 from .config import get_settings
 from .queue_worker import build_redis_settings
 from .services.chunker import Chunker
@@ -128,4 +128,5 @@ app = FastAPI(
 app.include_router(health.router)
 app.include_router(ingest.router,    prefix="/api")
 app.include_router(query.router,     prefix="/api")
+app.include_router(llm.router,       prefix="/api")     # /api/llm/status
 app.include_router(documents.router, prefix="/api")    # /api/documents/upload + /api/documents/delete

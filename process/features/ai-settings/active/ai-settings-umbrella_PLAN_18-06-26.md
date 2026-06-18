@@ -30,7 +30,7 @@ Research (2026-06-18) found the current worker is **Ollama-only**, the model is 
 
 ## Phases
 
-### Phase 1 — Status page (read-only)  ← in progress
+### Phase 1 — Status page (read-only)  ← code-complete (pending live test)
 Deliver the page + live observability. No mutation.
 - **UI shell: DONE** (2026-06-18) — `Pages/Admin/AiSettings.cshtml(.cs)`, sidebar item in `_Layout`, light+dark. Currently static/mock.
 - Remaining: new worker endpoint to report LLM status (ping Ollama `/api/tags`) + installed models; `IAiWorkerClient` method; `AiSettingsModel` calls it and renders **real** status cards + Ollama model list + connection badge. Worker-down → graceful "offline".
@@ -74,3 +74,4 @@ Advance one phase at a time: research subagent/inline → execution approval →
 ## Status log
 
 - 2026-06-18 — Program created. Research done. UI mockup approved by user. Phase 1 UI shell built (static). Phase 1 backend pending.
+- 2026-06-18 — Phase 1 backend done: worker `GET /api/llm/status` (pings Ollama `/api/tags`) + `IAiWorkerClient.GetLlmStatusAsync` + live status wired into the page (active model, Ollama reachability, installed-model dropdown, graceful offline). Handler verified against local Ollama (7 models). `dotnet build` + Python import/handler checks green. Pending live restart smoke test. **Next: Phase 2** (settings store + live model switch).
