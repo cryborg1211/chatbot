@@ -1,0 +1,140 @@
+@using chatbot.Infrastructure.Authorization
+@*
+    Admin notification bell (trigger + dropdown + behaviour script).
+    Drop into any admin header via:  <partial name="_NotificationBellPartial" />
+    Renders nothing for non-admins. Counts come from the audit trail
+    (auth.register + feedback.*) via GET /api/admin/notifications, scoped to a
+    per-browser "last seen" timestamp in localStorage. Rendered once per page.
+*@
+@{
+    var isAdmin = User?.IsInRole(Roles.Admin) ?? false;
+}
+@if (isAdmin)
+{
+    <div class="relative" id="notifMenuWrapper">
+        <!-- Trigger -->
+        <button type="button" id="notifMenuButton"
+                class="relative w-9 h-9 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 rounded-lg"
+                aria-haspopup="true" aria-expanded="false" aria-controls="notifMenu" title="Thông báo">
+            <i class="fa-regular fa-bell text-lg"></i>
+            <span id="notifBadge"
+                  class="hidden absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-semibold leading-none ring-2 ring-white dark:ring-gray-800">0</span>
+        </button>
+
+        <!-- Menu panel -->
+        <div id="notifMenu" role="menu" aria-labelledby="notifMenuButton"
+             class="hidden absolute right-0 mt-2 w-72 origin-top-right bg-white dark:bg-gray-800 rounded-xl shadow-lg ring-1 ring-black/5 dark:ring-white/10 py-2 z-50">
+
+            <div class="px-4 py-2.5 border-b border-gray-100 dark:border-gray-700">
+                <p class="text-sm font-semibold text-gray-800 dark:text-gray-100">Thông báo</p>
+            </div>
+
+            <div class="py-1">
+                <a href="/admin" role="menuitem"
+                   class="flex items-center justify-between gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+                    <span class="flex items-center gap-3">
+                        <i class="fa-solid fa-user-plus w-5 text-center text-violet-500"></i>
+                        <span>Người dùng mới</span>
+                    </span>
+                    <span id="notifUsersCount" class="min-w-[20px] text-center px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 text-xs font-medium dark:bg-gray-700 dark:text-gray-300">0</span>
+                </a>
+                <a href="/admin/feedback" role="menuitem"
+                   class="flex items-center justify-between gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+                    <span class="flex items-center gap-3">
+                        <i class="fa-solid fa-thumbs-up w-5 text-center text-amber-500"></i>
+                        <span>Phản hồi mới</span>
+                    </span>
+                    <span id="notifFeedbackCount" class="min-w-[20px] text-center px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 text-xs font-medium dark:bg-gray-700 dark:text-gray-300">0</span>
+                </a>
+            </div>
+
+            <div class="border-t border-gray-100 dark:border-gray-700 my-1"></div>
+
+            <button type="button" id="notifMarkSeen"
+                    class="w-full text-left px-4 py-2 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition">
+                Đánh dấu đã xem
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Admin notification bell: poll unseen counts, render badge, mark-seen.
+        (function () {
+            const btn = document.getElementById('notifMenuButton');
+            const menu = document.getElementById('notifMenu');
+            const badge = document.getElementById('notifBadge');
+            const usersEl = document.getElementById('notifUsersCount');
+            const feedbackEl = document.getElementById('notifFeedbackCount');
+            const markSeenBtn = document.getElementById('notifMarkSeen');
+            if (!btn || !menu) return;
+
+            const SEEN_KEY = 'ld3-notif-seen';
+
+            function getSeen() {
+                let s = localStorage.getItem(SEEN_KEY);
+                if (!s) {
+                    // First run on this browser — start the clock now so the
+                    // badge doesn't surface the entire history at once.
+                    s = new Date().toISOString();
+                    localStorage.setItem(SEEN_KEY, s);
+                }
+                return s;
+            }
+
+            function render(users, feedback) {
+                usersEl.textContent = users;
+                feedbackEl.textContent = feedback;
+                const total = users + feedback;
+                if (total > 0) {
+                    badge.textContent = total > 99 ? '99+' : String(total);
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            }
+
+            async function refresh() {
+                try {
+                    const since = encodeURIComponent(getSeen());
+                    const res = await fetch(`/api/admin/notifications?sinceIso=${since}`, {
+                        credentials: 'same-origin',
+                        headers: { 'Accept': 'application/json' },
+                    });
+                    if (!res.ok) return;
+                    const d = await res.json();
+                    render(d.newUsers ?? d.new_users ?? 0, d.newFeedback ?? d.new_feedback ?? 0);
+                } catch (e) { /* bell is non-critical — fail quietly */ }
+            }
+
+            function closeMenu() {
+                menu.classList.add('hidden');
+                btn.setAttribute('aria-expanded', 'false');
+            }
+
+            btn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                const nowHidden = menu.classList.toggle('hidden');
+                btn.setAttribute('aria-expanded', String(!nowHidden));
+            });
+
+            document.addEventListener('click', function (e) {
+                if (!menu.classList.contains('hidden') && !menu.contains(e.target) && !btn.contains(e.target)) {
+                    closeMenu();
+                }
+            });
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') closeMenu();
+            });
+
+            markSeenBtn?.addEventListener('click', function (e) {
+                e.stopPropagation();
+                localStorage.setItem(SEEN_KEY, new Date().toISOString());
+                render(0, 0);
+                closeMenu();
+            });
+
+            refresh();
+            setInterval(refresh, 60000);
+        })();
+    </script>
+}

@@ -1,4 +1,5 @@
 using chatbot.Infrastructure.Audit;
+using chatbot.Infrastructure.Storage;
 using chatbot.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -9,10 +10,11 @@ namespace chatbot.Pages.Account;
 
 /// <summary>
 /// Lets a signed-in user upload / replace / remove their avatar image.
-/// Files land in <c>wwwroot/uploads/avatars/</c> so they are served
-/// directly by the static-file middleware (no streaming controller needed).
-/// The new path is persisted on <see cref="ApplicationUser.AvatarPath"/> and
-/// the sign-in is refreshed so the navbar's avatar claim updates immediately.
+/// Blobs are stored via <see cref="IDocumentStorage"/> under the app's blob
+/// root (outside wwwroot) and served back through the authenticated
+/// <c>GET /api/account/avatar</c> endpoint — never as public static files.
+/// The stored relative path is persisted on <see cref="ApplicationUser.AvatarPath"/>
+/// and the sign-in is refreshed so the navbar's avatar claim updates immediately.
 /// </summary>
 [Authorize]
 public sealed class AvatarModel : PageModel
@@ -29,24 +31,23 @@ public sealed class AvatarModel : PageModel
         };
 
     private const long MaxBytes = 2 * 1024 * 1024; // 2 MB
-    private const string AvatarFolder = "uploads/avatars";
 
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
-    private readonly IWebHostEnvironment _env;
+    private readonly IDocumentStorage _storage;
     private readonly IAuditLogger _audit;
     private readonly ILogger<AvatarModel> _logger;
 
     public AvatarModel(
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
-        IWebHostEnvironment env,
+        IDocumentStorage storage,
         IAuditLogger audit,
         ILogger<AvatarModel> logger)
     {
         _userManager   = userManager;
         _signInManager = signInManager;
-        _env           = env;
+        _storage       = storage;
         _audit         = audit;
         _logger        = logger;
     }
@@ -68,7 +69,7 @@ public sealed class AvatarModel : PageModel
         return Page();
     }
 
-    public async Task<IActionResult> OnPostAsync()
+    public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken)
     {
         var user = await _userManager.GetUserAsync(User);
         if (user is null)
@@ -95,36 +96,30 @@ public sealed class AvatarModel : PageModel
             return Page();
         }
 
-        // wwwroot may not exist on a fresh checkout; WebRootPath can be null.
-        var webRoot = _env.WebRootPath
-                      ?? Path.Combine(_env.ContentRootPath, "wwwroot");
-        var targetDir = Path.Combine(webRoot, "uploads", "avatars");
-        Directory.CreateDirectory(targetDir);
-
-        var fileName = $"{Guid.NewGuid():N}{ext}";
-        var absolutePath = Path.Combine(targetDir, fileName);
-
-        await using (var stream = new FileStream(
-            absolutePath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+        // Persist the blob outside wwwroot via the shared storage backend.
+        // The extension drives the stored name; the upload's own name is ignored.
+        StoredFile stored;
+        await using (var uploadStream = Upload.OpenReadStream())
         {
-            await Upload.CopyToAsync(stream);
+            stored = await _storage.SaveAsync(uploadStream, $"avatar{ext}", cancellationToken);
         }
 
         var oldPath = user.AvatarPath;
 
-        user.AvatarPath = $"/{AvatarFolder}/{fileName}";
+        user.AvatarPath = stored.RelativePath;
         var result = await _userManager.UpdateAsync(user);
         if (!result.Succeeded)
         {
-            // Roll back the just-written file so we don't leak orphans.
-            TryDelete(absolutePath);
+            // Roll back the just-written blob so we don't leak orphans.
+            await _storage.DeleteAsync(stored.RelativePath);
             foreach (var err in result.Errors)
                 ModelState.AddModelError(string.Empty, err.Description);
             return Page();
         }
 
-        // Best-effort cleanup of the previous avatar file.
-        DeleteWebRelative(webRoot, oldPath);
+        // Best-effort cleanup of the previous avatar blob.
+        if (!string.IsNullOrWhiteSpace(oldPath))
+            await _storage.DeleteAsync(oldPath);
 
         // Re-issue the cookie so AppClaimTypes.AvatarPath reflects the new image.
         await _signInManager.RefreshSignInAsync(user);
@@ -149,9 +144,7 @@ public sealed class AvatarModel : PageModel
 
         if (!string.IsNullOrWhiteSpace(user.AvatarPath))
         {
-            var webRoot = _env.WebRootPath
-                          ?? Path.Combine(_env.ContentRootPath, "wwwroot");
-            DeleteWebRelative(webRoot, user.AvatarPath);
+            await _storage.DeleteAsync(user.AvatarPath);
 
             user.AvatarPath = null;
             await _userManager.UpdateAsync(user);
@@ -172,34 +165,5 @@ public sealed class AvatarModel : PageModel
     {
         CurrentAvatarPath = user.AvatarPath;
         DisplayName = string.IsNullOrWhiteSpace(user.FullName) ? "Người dùng" : user.FullName;
-    }
-
-    private static void DeleteWebRelative(string webRoot, string? webPath)
-    {
-        if (string.IsNullOrWhiteSpace(webPath))
-            return;
-
-        // webPath is like "/uploads/avatars/abc.png" — strip the leading slash
-        // and resolve under webRoot. Guard against escaping the avatar folder.
-        var relative = webPath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
-        var combined = Path.GetFullPath(Path.Combine(webRoot, relative));
-        var avatarRoot = Path.GetFullPath(Path.Combine(webRoot, "uploads", "avatars"))
-                         + Path.DirectorySeparatorChar;
-
-        if (combined.StartsWith(avatarRoot, StringComparison.OrdinalIgnoreCase))
-            TryDelete(combined);
-    }
-
-    private static void TryDelete(string absolutePath)
-    {
-        try
-        {
-            if (System.IO.File.Exists(absolutePath))
-                System.IO.File.Delete(absolutePath);
-        }
-        catch
-        {
-            // Best-effort — a leftover avatar file is harmless.
-        }
     }
 }

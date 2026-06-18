@@ -2,6 +2,7 @@ using System.Security.Claims;
 using chatbot.Data;
 using chatbot.Infrastructure.AiWorker;
 using chatbot.Infrastructure.Audit;
+using chatbot.Infrastructure.Authorization;
 using chatbot.Infrastructure.Identity;
 using chatbot.Infrastructure.Storage;
 using chatbot.Models;
@@ -226,6 +227,53 @@ public sealed class DocumentsController : ControllerBase
                 cancellationToken);
 
         return doc is null ? NotFound() : Ok(ToDetail(doc));
+    }
+
+    // ------------------------------------------------------------------
+    //  GET /api/documents/{id}/download
+    //  Streams the original stored blob back as an attachment. Admins (e.g.
+    //  opening a document from the cross-tenant log viewer) may fetch any
+    //  document; everyone else is tenant-scoped.
+    // ------------------------------------------------------------------
+    [HttpGet("{id:guid}/download")]
+    public async Task<IActionResult> Download(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var query = _db.Documents.AsNoTracking().Where(d => d.Id == id);
+
+        if (!User.IsInRole(Roles.Admin))
+        {
+            if (!TryGetDepartmentId(out var departmentId))
+                return Forbid();
+            query = query.Where(d => d.DepartmentId == departmentId);
+        }
+
+        var doc = await query.FirstOrDefaultAsync(cancellationToken);
+        if (doc is null) return NotFound();
+
+        Stream stream;
+        try
+        {
+            stream = await _storage.OpenReadAsync(doc.StoredFileName, cancellationToken);
+        }
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
+        {
+            _logger.LogWarning(ex,
+                "doc_download_blob_missing doc={DocId} path={Path}",
+                doc.Id, doc.StoredFileName);
+            return NotFound();
+        }
+
+        _ = _audit.LogAsync(
+            "doc.download", "doc",
+            resourceType: nameof(Document),
+            resourceId:   doc.Id.ToString(),
+            details: new { fileName = doc.OriginalFileName });
+
+        // fileDownloadName → Content-Disposition: attachment; serves the
+        // user-facing original name instead of the on-disk GUID.
+        return File(stream, doc.MimeType, doc.OriginalFileName);
     }
 
     // ------------------------------------------------------------------

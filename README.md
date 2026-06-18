@@ -7,14 +7,14 @@ Dự án phát triển hệ thống RAG Chatbot nội bộ cho Trung tâm đổi
 ## 🟥 GIAI ĐOẠN 1: Chuẩn hóa UI/UX & Data Binding (Dashboard Admin)
 **Mục tiêu:** Loại bỏ hoàn toàn dữ liệu giả (mock data), hoàn thiện các tương tác cốt lõi trên giao diện Quản trị viên.
 
-- [ ] **Dọn dẹp Mock Data:** Xóa toàn bộ dữ liệu mẫu tĩnh trên trang quản lý người dùng (`http://localhost:5101/Admin/Users`).
+- [ ] **Dọn dẹp Mock Data:** Xóa toàn bộ dữ liệu mẫu tĩnh trên trang quản lý người dùng (`http://localhost:5101/admin`).
 - [ ] **Kích hoạt các thành phần UI bị liệt:**
   - [ ] Nút danh sách bot chat "Gần đây" (Recent bots) - bổ sung liên kết động hoặc khóa tương tác nếu chưa khả dụng.
   - [ ] Nút Cài đặt hệ thống (Settings).
   - [ ] Nút Thông báo (Notifications).
   - [ ] Nút Hồ sơ cá nhân (Profile).
   - [ ] Nút Tạo cuộc trò chuyện mới (New Chat).
-- [ ] **Tối ưu hóa Phân trang:** Thực hiện gắn thẻ (Semantic HTML Tags) và chuẩn hóa luồng render danh sách tại `http://localhost:5101/Admin/Users?PageNumber=1` để giao diện hiển thị gọn gàng, đúng cấu trúc kỹ thuật.
+- [ ] **Tối ưu hóa Phân trang:** Thực hiện gắn thẻ (Semantic HTML Tags) và chuẩn hóa luồng render danh sách tại `http://localhost:5101/admin?PageNumber=1` để giao diện hiển thị gọn gàng, đúng cấu trúc kỹ thuật.
 
 ---
 

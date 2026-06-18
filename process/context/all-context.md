@@ -360,7 +360,9 @@ chatbot/
 
 ## Current Features
 
-No feature folders created yet. Potential future feature areas:
+- `ai-settings` — admin AI/model configuration dashboard (provider routing, runtime model switching, encrypted provider API keys). 4-phase program; Phase 1 UI shell shipped 2026-06-18 at `/admin/ai-settings`. See `process/features/ai-settings/`.
+
+Potential future feature areas:
 - `document-ingestion` — parsing pipeline, chunking, Docling integration
 - `chat-rag` — query pipeline, retrieval, LLM routing, streaming
 - `admin-dashboard` — user/doc/feedback/log management pages

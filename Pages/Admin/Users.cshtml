@@ -1,4 +1,4 @@
-@page
+@page "/admin"
 @model chatbot.Pages.Admin.UsersModel
 @{
     ViewData["Title"] = "Quản lý người dùng";
@@ -144,7 +144,7 @@
                                     <input type="hidden" name="Search" value="@Model.Search" />
                                     <input type="hidden" name="DepartmentId" value="@Model.DepartmentId" />
                                     <input type="hidden" name="PageNumber" value="@Model.PageNumber" />
-                                    <button type="submit" class="px-3 py-1.5 border border-gray-300 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition">Từ chối</button>
+                                    <button type="submit" class="px-3 py-1.5 border border-gray-300 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700/50">Từ chối</button>
                                 </form>
                             }
                             else if (u.Status == chatbot.Pages.Admin.UserStatus.Locked)
@@ -162,7 +162,7 @@
                                     <input type="hidden" name="Search" value="@Model.Search" />
                                     <input type="hidden" name="DepartmentId" value="@Model.DepartmentId" />
                                     <input type="hidden" name="PageNumber" value="@Model.PageNumber" />
-                                    <button type="submit" class="px-3 py-1.5 border border-gray-300 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition" title="Khoá tài khoản">Khoá</button>
+                                    <button type="submit" class="px-3 py-1.5 border border-gray-300 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700/50" title="Khoá tài khoản">Khoá</button>
                                 </form>
                             }
                         </div>
@@ -179,16 +179,16 @@
             var startItem = (Model.PageNumber - 1) * pageSize + 1;
             var endItem = Math.Min(Model.PageNumber * pageSize, Model.TotalCount);
         }
-        <p class="text-sm text-gray-500">Hien thi @startItem-@endItem trong tong @Model.TotalCount</p>
+        <p class="text-sm text-gray-500">Hiển thị @startItem-@endItem trong tổng @Model.TotalCount</p>
         <div class="flex items-center gap-1">
             @if (Model.PageNumber <= 1)
             {
-                <span class="px-3 py-1.5 text-sm text-gray-400 rounded-lg border border-gray-200 pointer-events-none opacity-50 dark:border-gray-700">Truoc</span>
+                <span class="px-3 py-1.5 text-sm text-gray-400 rounded-lg border border-gray-200 pointer-events-none opacity-50 dark:border-gray-700">Trước</span>
             }
             else
             {
                 <a href="?Search=@Model.Search&DepartmentId=@Model.DepartmentId&PageNumber=@(Model.PageNumber - 1)"
-                   class="px-3 py-1.5 text-sm text-gray-600 rounded-lg border border-gray-300 hover:bg-gray-50 transition dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700/50">Truoc</a>
+                   class="px-3 py-1.5 text-sm text-gray-600 rounded-lg border border-gray-300 hover:bg-gray-50 transition dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700/50">Trước</a>
             }
 
             @{

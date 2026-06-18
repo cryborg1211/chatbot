@@ -67,7 +67,7 @@
                 <div class="flex flex-col items-center gap-3">
                     <div class="w-24 h-24 rounded-full ring-2 ring-blue-100 dark:ring-blue-900 overflow-hidden bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center">
                         <img id="avatarPreview"
-                             src="@(Model.CurrentAvatarPath ?? "")"
+                             src="@(string.IsNullOrEmpty(Model.CurrentAvatarPath) ? "" : $"/api/account/avatar?v={Uri.EscapeDataString(Model.CurrentAvatarPath)}")"
                              alt="Ảnh đại diện"
                              class="w-full h-full object-cover @(string.IsNullOrEmpty(Model.CurrentAvatarPath) ? "hidden" : "")" />
                         <i id="avatarPlaceholder"
@@ -121,6 +121,13 @@
                 img.src = url;
                 img.classList.remove('hidden');
                 placeholder?.classList.add('hidden');
+            });
+
+            // Fall back to the icon if the stored avatar fails to load
+            // (e.g. a legacy path that no longer resolves through the endpoint).
+            img?.addEventListener('error', function () {
+                img.classList.add('hidden');
+                placeholder?.classList.remove('hidden');
             });
         })();
     </script>

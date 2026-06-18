@@ -52,6 +52,11 @@
                         <i class="fa-solid fa-clock-rotate-left text-sm w-5 text-center @(activeNav == "Logs" ? "text-blue-500" : "text-gray-400")"></i>
                         <span>Nhật ký hệ thống</span>
                     </a>
+                    <a href="/admin/ai-settings"
+                       class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm @(activeNav == "AiSettings" ? "font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" : "text-gray-600 hover:bg-gray-100 transition dark:text-gray-300 dark:hover:bg-gray-700/50")">
+                        <i class="fa-solid fa-microchip text-sm w-5 text-center @(activeNav == "AiSettings" ? "text-blue-500" : "text-gray-400")"></i>
+                        <span>Cấu hình AI</span>
+                    </a>
                 </nav>
             </div>
 
@@ -66,9 +71,7 @@
 
                 <!-- Right: Notification + Profile -->
                 <div class="flex items-center gap-4">
-                    <span class="relative w-9 h-9 flex items-center justify-center text-gray-400 cursor-not-allowed opacity-50" title="Chưa khả dụng">
-                        <i class="fa-regular fa-bell text-lg"></i>
-                    </span>
+                    <partial name="_NotificationBellPartial" />
                     <div class="h-6 w-px bg-gray-200 dark:bg-gray-700"></div>
 
                     <!-- Profile dropdown (shared partial) -->

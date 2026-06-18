@@ -117,10 +117,12 @@
                         }
                         @if (l.ResourceName is not null)
                         {
-                            <span class="inline-flex items-center gap-1">
-                                <i class="fa-regular fa-file-lines text-gray-400 text-xs"></i>
+                            <a href="/api/documents/@l.ResourceId/download" title="Tải xuống tài liệu"
+                               class="inline-flex items-center gap-1 text-blue-600 hover:underline dark:text-blue-400">
+                                <i class="fa-regular fa-file-lines text-xs"></i>
                                 @l.ResourceName
-                            </span>
+                                <i class="fa-solid fa-download text-[10px] opacity-60"></i>
+                            </a>
                         }
                         else
                         {

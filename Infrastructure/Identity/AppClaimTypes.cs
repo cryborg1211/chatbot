@@ -13,6 +13,6 @@ public static class AppClaimTypes
     /// <summary>Display name for headers/UI greeting.</summary>
     public const string FullName = "full_name";
 
-    /// <summary>Web-relative path to the user's avatar image, for the navbar.</summary>
+    /// <summary>Storage-relative path to the user's avatar blob, served via /api/account/avatar.</summary>
     public const string AvatarPath = "avatar_path";
 }

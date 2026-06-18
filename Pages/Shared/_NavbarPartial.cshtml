@@ -23,14 +23,12 @@
             <p class="text-sm font-medium text-gray-700 dark:text-gray-100">@displayName</p>
             <p class="text-xs text-gray-400">@roleLabel</p>
         </div>
-        <div class="w-9 h-9 rounded-full overflow-hidden bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center ring-2 ring-blue-100 dark:ring-blue-900">
+        <div class="relative w-9 h-9 rounded-full overflow-hidden bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center ring-2 ring-blue-100 dark:ring-blue-900">
+            <i class="fa-solid fa-user text-white text-xs"></i>
             @if (!string.IsNullOrEmpty(avatarPath))
             {
-                <img src="@avatarPath" alt="Ảnh đại diện" class="w-full h-full object-cover" />
-            }
-            else
-            {
-                <i class="fa-solid fa-user text-white text-xs"></i>
+                <img src="/api/account/avatar?v=@Uri.EscapeDataString(avatarPath)" alt="Ảnh đại diện"
+                     class="absolute inset-0 w-full h-full object-cover" onerror="this.remove()" />
             }
         </div>
         <i id="profileMenuChevron" class="fa-solid fa-chevron-down text-xs text-gray-400 transition-transform duration-200"></i>
