@@ -1,3 +1,14 @@
+---
+name: protocol:program-goal-charter-template
+description: "Blank and filled Program Goal Charter template for phase-program umbrella plans. Defines the north-star, definition of done, scope tiers, and hard safety constraints for autonomous multi-phase sessions."
+date: 15-06-26
+metadata:
+  node_type: reference
+  type: protocol
+  read_order: 10
+  required: false
+  read_when: "building a phase-program umbrella plan or needing the compressed session-goal block format"
+---
 # Program Goal Charter Template
 
 This is the canonical template for the **Program Goal Charter** required by every phase program.
@@ -77,18 +88,18 @@ Next phase: process/features/{feature}/active/{next-phase-plan}.md
 
 ## Filled-In Reference Example
 
-Real charter from the duma.so "Full Product E2E" program. Note: execution-discipline prose is
+Real charter from the example-co.app "Full Product E2E" program. Note: execution-discipline prose is
 intentionally absent — it lives in `process/development-protocols/phase-programs.md`.
 
-The charter example below and the session-goal example further down both use duma.so as the
+The charter example below and the session-goal example further down both use example-co.app as the
 sample program; they illustrate different aspects (charter structure vs compressed launch block)
 and are not the same program instance.
 
 ```text
-# Full Product E2E (duma.so) — Program Goal Charter
+# Full Product E2E (example-co.app) — Program Goal Charter
 
 North star:
-- Make duma.so's full-product E2E system reliable enough that a future agent can autonomously
+- Make example-co.app's full-product E2E system reliable enough that a future agent can autonomously
   implement a feature, write/extend its tests, run them headlessly with complete evidence, diagnose
   and self-heal failures in a bounded loop, run highest-risk slices against production-fidelity
   targets, clean up all state safely, and hand off only after behavior is genuinely verified —
@@ -144,7 +155,7 @@ Hard safety constraints (non-negotiable, per phase):
 
 ### Filled-In Session-Goal Block (example)
 
-A compressed launch packet for the duma.so "Full Product E2E" program. This is the autonomous
+A compressed launch packet for the example-co.app "Full Product E2E" program. This is the autonomous
 session-goal variant: per-phase approval is standing-granted, and irreversible/costful actions are
 deferred-and-reported rather than executed or paused-on (see
 `process/development-protocols/phase-programs.md`, "Autonomous Session-Goal Variant"). It stays under

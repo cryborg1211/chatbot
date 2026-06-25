@@ -1,6 +1,6 @@
 # LD3 AI Chatbot - All Context
 
-Last updated: 2026-06-09
+Last updated: 2026-06-25
 
 This file is the root context entrypoint for the repo.
 
@@ -176,6 +176,8 @@ chatbot/
       StorageOptions.cs
   Migrations/                  -- 4 EF Core migrations (Identity, Documents, Chat, SystemLog)
   Models/
+    AiConfig.cs                -- singleton table (Id=1): ActiveProvider, ActiveModel, Temperature, TopK
+    AiProviderKey.cs           -- PK=Provider, EncryptedKey (Data Protection blob), timestamps
     ApplicationUser.cs         -- Identity user + FullName, DepartmentId
     ChatMessage.cs             -- message in a conversation (User/Assistant/System)
     ChatRole.cs                -- enum: User, Assistant, System
@@ -194,8 +196,13 @@ chatbot/
     Chat/Index                 -- main chat UI
     Shared/_Layout.cshtml      -- shared layout
   Services/
+    Ai/
+      AiConfigService.cs       -- singleton AiConfig CRUD (provider/model/temperature/topK)
+      IAiConfigService.cs
+      ProviderKeyService.cs    -- encrypted provider API key store (Data Protection)
+      IProviderKeyService.cs
     Chat/
-      ChatService.cs           -- conversation management + stream relay to worker
+      ChatService.cs           -- conversation management + stream relay to worker (reads AiConfig per query)
       IChatService.cs
     Documents/
       DocumentService.cs       -- document upload orchestration
@@ -210,8 +217,9 @@ chatbot/
       queue_worker.py          -- arq Redis-backed async job worker
       api/
         health.py              -- /health endpoint
-        ingest.py              -- /api/ingest (document → embed → store)
-        query.py               -- /api/query (RAG chat via SSE streaming)
+        ingest.py              -- /api/ingest (document → embed → store, asyncio.to_thread)
+        query.py               -- /api/query (RAG chat via SSE streaming, per-request provider routing)
+        llm.py                 -- /api/llm/status, /api/llm/models (admin dashboard endpoints)
         documents.py           -- /api/documents/upload, /api/documents/delete
       schemas/
         ingest.py              -- Pydantic models for ingest
@@ -219,8 +227,8 @@ chatbot/
       services/
         chunker.py             -- Hybrid chunker: HierarchicalChunker primary + Markdown-aware oversized-chunk post-processor (SentenceSplitter fallback for prose)
         embedder.py            -- BAAI/bge-m3 singleton embedder
-        llm_router.py          -- Ollama LLM with enforced anti-hallucination system prompt
-        loader.py              -- Docling-based document loader (PDF, DOCX, legacy DOC)
+        llm_router.py          -- Provider-agnostic LLM factory (Ollama/OpenAI/Anthropic/Gemini) + enforced system prompt
+        loader.py              -- Docling-based document loader (PDF with EasyOCR+TableFormer, DOCX, legacy DOC)
         prompt_builder.py      -- Jinja2 RAG system prompt renderer
         retriever.py           -- tenant-filtered Qdrant vector search
         vectorstore.py         -- Qdrant collection management
@@ -254,7 +262,7 @@ chatbot/
 - **Document Parsing:** IBM Docling 2.0+ (PDF/DOCX → Markdown with table structure)
 - **Embedding Model:** BAAI/bge-m3 (1024-dim dense vectors) via sentence-transformers / HuggingFace
 - **Vector DB:** Qdrant 1.11+ (local instance, collection: `ld3_knowledge`)
-- **LLM:** Ollama (local) — default model: Qwen 2.5:3b (configurable, API-selectable planned)
+- **LLM:** Multi-provider via `build_chat_llm()` factory — Ollama (local default), OpenAI, Anthropic, Gemini. Per-request routing from admin dashboard config. Default model: Qwen 2.5:3b
 - **Chunking:** Docling `HierarchicalChunker` as primary splitter (table-aware); custom Markdown-aware post-processor re-attaches column headers to continuation chunks; `SentenceSplitter` fallback for oversized prose. `DoclingResult` dataclass bridges loader → chunker boundary.
 - **Prompt Templates:** Jinja2-based RAG system prompt
 - **Job Queue:** arq (Redis-backed async worker for document upload processing)
@@ -281,13 +289,23 @@ chatbot/
 
 **Multi-tenant isolation:** Every query is scoped by `DepartmentId`. The claim is injected into the auth cookie at sign-in via `ApplicationUserClaimsPrincipalFactory`. The Python retriever enforces tenant filtering on every Qdrant query — never returns cross-department data.
 
-**SSE streaming pipeline:** Browser → `ChatController` (SSE) → `ChatService` → `AiWorkerClient` (HTTP SSE to Python) → FastAPI `/api/query` → Embedder → Retriever → PromptBuilder → LlmRouter (Ollama streaming). Events: `sources`, `token` (N times), `done` or `error`.
+**SSE streaming pipeline:** Browser → `ChatController` (SSE) → `ChatService` (reads `AiConfig` for provider/model, decrypts cloud API key if needed) → `AiWorkerClient` (HTTP SSE to Python, passes provider/model/apiKey/temperature/topK) → FastAPI `/api/query` → `_select_llm()` routes per request (Ollama reuses singleton; cloud builds fresh `LlmRouter`) → Embedder (via `asyncio.to_thread`) → Retriever (via `asyncio.to_thread`) → PromptBuilder → LlmRouter streaming. Events: `sources`, `token` (N times), `done` or `error`.
 
 **Anti-hallucination system prompt:** `LlmRouter.ENFORCED_SYSTEM_PROMPT` is always injected at index 0 of every conversation. It forces the LLM to read tables row-by-row, extract before calculating, never invent numbers, and state when data is missing.
 
 **Document ingestion flow:** Upload via .NET API → stored to `App_Data/uploads/` → `DocumentIngestionWorker` (background service) polls Pending docs → sends to Python `/api/ingest` → Docling parses to Markdown + returns `DoclingResult` → `HierarchicalChunker` primary split → Markdown-aware oversized-chunk post-processing (re-attaches table headers) → bge-m3 embeds → Qdrant stores. SignalR pushes status updates to browser. Plain-text (`.txt`) path still uses `SentenceSplitter` directly.
 
 **Legacy .doc support:** Binary `.doc` files are converted to `.docx` via LibreOffice headless (`convert_doc_to_docx`), then processed through Docling like normal DOCX.
+
+**PDF OCR pipeline:** `loader.py` uses EasyOCR (Vietnamese `vi` + English `en`) for scanned pages, TableFormer ACCURATE mode for complex table parsing. Quality gate `_assess_pdf_quality()` rejects blurry scans with Vietnamese error messages. PDF converter cached via `@lru_cache`.
+
+**Provider routing (per-request):** `ChatService` reads `AiConfig` singleton per query → decrypts cloud API key via `ProviderKeyService` → passes provider/model/apiKey/temperature/topK in `QueryRequest`. Worker `_select_llm()` in `/api/query` routes: Ollama reuses app-state singleton, cloud providers build fresh `LlmRouter` via `build_chat_llm()` factory.
+
+**Async page pattern:** AI Settings page (`/admin/ai-settings`) renders shell from DB config only (fast GET), then JS fetches `?handler=Status` for live worker data. Prevents slow/offline worker from blocking page load.
+
+**Encrypted key storage:** Provider API keys encrypted at rest via ASP.NET Core Data Protection (`IDataProtector("ai-provider-keys.v1")`). Decrypted only for forwarding over authenticated local worker hop. Never returned to browser (write-only UI).
+
+**Event loop safety:** Slow CPU operations (PDF parse, embedding, vector retrieval) run via `asyncio.to_thread` to prevent blocking concurrent `/api/query` requests.
 
 **Naming conventions:**
 - C#: PascalCase types/methods, camelCase locals, `I`-prefixed interfaces
@@ -343,6 +361,8 @@ chatbot/
 - `ChatMessages` — message timeline (Role: User/Assistant/System, Content nvarchar(max), SourceDocumentIdsJson)
 - `Feedbacks` — per-message thumbs up/down + comment (unique per user+message)
 - `SystemLogs` — audit trail (Action, Category, Severity, UserId, DepartmentId, Details JSON)
+- `AiConfigs` — singleton (Id=1): ActiveProvider, ActiveModel, Temperature, TopK, UpdatedAt, UpdatedBy
+- `AiProviderKeys` — PK=Provider: EncryptedKey (Data Protection blob), LastValidated, timestamps
 
 **Key indexes:** tenant+status on Documents, userId+updatedAt on Conversations, conversationId+createdAt on ChatMessages, timestamp descending on SystemLogs.
 
@@ -354,13 +374,15 @@ chatbot/
 
 ## Current Active Work
 
-**Hybrid chunker shipped (2026-06-09).** The `HierarchicalChunker` + Markdown-aware post-processor replaced the old `SentenceSplitter`-only chunker. All documents re-ingested. No active blocking problem.
+**AI Settings dashboard shipped (2026-06-23).** 4-phase program complete: status page, settings store + model switch, provider abstraction (Ollama/OpenAI/Anthropic/Gemini), encrypted keys + cloud routing. PDF OCR pipeline (EasyOCR + TableFormer) also shipped. Event loop safety (asyncio.to_thread) applied to ingest + query.
 
-**Known issue (low priority):** `code-review-graph` pre-commit hook fails with `UnicodeEncodeError` (cp1252 codec) on Windows when changed files contain Vietnamese text. Non-blocking — commit still succeeds. Tracked in `process/general-plans/backlog/code-review-graph-unicode_BACKLOG.md`.
+**Known issue (low priority):** `code-review-graph` pre-commit hook fails with `UnicodeEncodeError` (cp1252 codec) on Windows when changed files contain Vietnamese text. Non-blocking — commit still succeeds.
+
+**Cleanup done (2026-06-25):** Dead code removed (`POST /llm/test`, `TestLlmAsync`, `OnPostTestAsync`, `LlmTestResult`). Stale admin-unified-page plan archived.
 
 ## Current Features
 
-- `ai-settings` — admin AI/model configuration dashboard (provider routing, runtime model switching, encrypted provider API keys). 4-phase program; Phase 1 UI shell shipped 2026-06-18 at `/admin/ai-settings`. See `process/features/ai-settings/`.
+- `ai-settings` — admin AI/model configuration dashboard (provider routing, runtime model switching, encrypted provider API keys). 4-phase program complete (all phases code-complete, uncommitted as of 2026-06-23). Dashboard at `/admin/ai-settings`. See `process/features/ai-settings/`.
 
 Potential future feature areas:
 - `document-ingestion` — parsing pipeline, chunking, Docling integration
@@ -370,7 +392,7 @@ Potential future feature areas:
 ## Scan Metadata
 
 - Generated: 2026-06-09
-- Last updated: 2026-06-09 (hybrid-chunker implementation complete)
-- HEAD: 77ea6ad (main) — hybrid chunker + Markdown post-processor shipped
+- Last updated: 2026-06-25 (AI settings 4-phase complete, PDF OCR, dead code cleanup)
+- HEAD: feaf8b6 (main) — AI settings dashboard + PDF pipeline (uncommitted batch pending)
 - Mode: incremental update
 - Package manager: dotnet (C#) + pip/hatch (Python worker)

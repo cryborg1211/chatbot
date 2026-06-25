@@ -10,11 +10,11 @@ process/
   development-protocols/   -- managed methodology docs (RIPER-5, orchestration, standards)
   features/                -- feature-scoped storage (plans, reports, references per feature)
   general-plans/           -- cross-cutting plans, reports, and references
-    active/                -- in-progress plans
+    active/                -- in-progress plans (each plan lives inside a {slug}_{date}/ task folder)
     completed/             -- archived completed plans
     backlog/               -- deferred/future plans
-    reports/               -- operational reports
-    references/            -- research and reference docs
+    reports/               -- (deprecated — read-only legacy; do NOT create for new projects)
+    references/            -- (deprecated — read-only legacy; do NOT create for new projects)
 
 ## Key Conventions
 

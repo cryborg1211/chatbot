@@ -1,5 +1,7 @@
 # AGENTS.md
 
+**Bootstrap guard:** If `process/context/all-context.md` does not exist, the harness has not been set up yet (a bare `process/context/` holding only `generated-skills-catalog.json` from install does NOT count). Run `vc-setup` before any task — the context router and protocol docs are absent and agents will not route correctly.
+
 This file is the Codex compatibility layer for the existing `.claude/` system.
 
 Keep this file aligned with [CLAUDE.md](CLAUDE.md)
@@ -36,14 +38,14 @@ Read these files as needed:
 - [plan-lifecycle.md](process/development-protocols/plan-lifecycle.md)
 - [phase-programs.md](process/development-protocols/phase-programs.md)
 - [context-maintenance.md](process/development-protocols/context-maintenance.md)
-- [parallel-fan-out.md](process/development-protocols/parallel-fan-out.md)
-- [intent-clarification.md](process/development-protocols/intent-clarification.md)
+- [autopilot.md](process/development-protocols/autopilot.md)
+- [communication-standards.md](process/development-protocols/communication-standards.md)
 
 Reference docs (harness methodology, not project-specific):
 
-- [example-simple-prd.md](process/development-protocols/references/example-simple-prd.md) - Reference for simple plan structure
-- [example-complex-prd.md](process/development-protocols/references/example-complex-prd.md) - Reference for complex plan depth
-- [program-goal-charter-template.md](process/development-protocols/references/program-goal-charter-template.md) - Program Goal Charter template for phase programs
+- `.claude/skills/vc-generate-plan/references/example-simple-prd.md` - Reference for simple plan structure
+- `.claude/skills/vc-generate-plan/references/example-complex-prd.md` - Reference for complex plan depth
+- `.claude/skills/vc-generate-phase-program/references/program-goal-charter-template.md` - Program Goal Charter template for phase programs
 
 ### Orchestrator Role (Main Codex Session)
 
@@ -75,7 +77,7 @@ RIPER-5?", can be answered directly.
 
 Authoritative context for this repository:
 
-[process/context/all-context.md](process/context/all-context.md)
+`process/context/all-context.md`
 
 Contains:
 
@@ -88,9 +90,9 @@ Contains:
 
 Before substantial planning or implementation work, consult:
 
-- [process/context/all-context.md](process/context/all-context.md)
+- `process/context/all-context.md`
 - [process/development-protocols/all-development-protocols.md](process/development-protocols/all-development-protocols.md)
-- [.claude/memory/MEMORY.md](.claude/memory/MEMORY.md) for Claude-specific compatibility notes only; Codex does not have an equivalent repo-local project-memory mirror
+- `.claude/memory/MEMORY.md` for Claude-specific compatibility notes only; Codex does not have an equivalent repo-local project-memory mirror
 
 **Context routing discipline:** `all-*.md` entrypoints are routers, not the full knowledge. Agents MUST follow the routing tables in `all-*.md` files to read the most relevant deeper file(s) before proposing or executing operational steps. Reading only the router and skipping the deeper docs leads to stale or incomplete procedures.
 
@@ -100,11 +102,14 @@ The complete RIPER-5 protocol is defined in the real agent files at `.claude/age
 for Codex through `.codex/agents/`:
 
 - [.claude/agents/vc-research-agent.md](.claude/agents/vc-research-agent.md)
+- [.claude/agents/vc-spec-agent.md](.claude/agents/vc-spec-agent.md) — SPEC: product-discovery requirements doc before INNOVATE
 - [.claude/agents/vc-innovate-agent.md](.claude/agents/vc-innovate-agent.md)
 - [.claude/agents/vc-plan-agent.md](.claude/agents/vc-plan-agent.md)
+- [.claude/agents/vc-validate-agent.md](.claude/agents/vc-validate-agent.md) — VALIDATE: convert plan to executable contract before EXECUTE
 - [.claude/agents/vc-execute-agent.md](.claude/agents/vc-execute-agent.md)
 - [.claude/agents/vc-fast-mode-agent.md](.claude/agents/vc-fast-mode-agent.md)
 - [.claude/agents/vc-update-process-agent.md](.claude/agents/vc-update-process-agent.md)
+- [.claude/agents/vc-quick-fix-agent.md](.claude/agents/vc-quick-fix-agent.md) — QUICK FIX lane: lightweight lane for small low-risk changes
 - `.codex/agents/*.toml` mirrors the same agent roster for Codex
 
 The orchestrator operates outside the RIPER-5 phase modes. It routes, delegates, and monitors.
@@ -122,7 +127,7 @@ Key Requirements:
 
 Auto-Detection Patterns:
 
-- Feature requests -> Step 0 skill discovery -> vc-research-agent -> INNOVATE -> PLAN -> EXECUTE
+- Feature requests -> Step 0 skill discovery -> vc-research-agent -> SPEC -> INNOVATE -> PLAN -> VALIDATE -> EXECUTE
 - Questions -> vc-research-agent for non-trivial investigation or direct answer for trivial conceptual questions
 - Trivial fixes -> vc-execute-agent directly with no plan required
 - Bug/debug -> vc-debugger as the default actor; helper skills like `vc-scout`, `vc-sequential-thinking`, and `vc-problem-solving` may assist
@@ -143,7 +148,7 @@ Large program rule:
   `process/development-protocols/phase-programs.md` rather than freehanding the structure.
 
 Intent clarification: Before auto-routing, the orchestrator scores request ambiguity per
-`process/development-protocols/intent-clarification.md`. Clear requests (score 0-1) auto-route
+`process/development-protocols/orchestration.md` §Intent Clarification. Clear requests (score 0-1) auto-route
 silently. Ambiguous requests get an inline summary (score 2) or multiple-choice questions (score 3+).
 
 When the user explicitly invokes one of the mode names or command names from the previous
@@ -292,23 +297,18 @@ The active system is intentionally split into four layers:
   - `vc-scout`
   - `vc-sequential-thinking`
   - `vc-problem-solving`
-  - `vc-preview`
-  - `vc-tech-graph`
-  - `vc-watzup`
-  - `vc-xia`
-  - `vc-repomix`
   - `vc-docs-seeker`
-  - `vc-chrome-devtools`
   - `vc-agent-browser`
-  - `vc-context-engineering`
   - `vc-web-testing`
   - `vc-frontend-design`
   - `vc-predict`
   - `vc-scenario`
   - `vc-security`
   - `vc-autoresearch`
-- **Orchestration utility**:
-  - `vc-team` coordinates multiple surviving actors/helpers in parallel but is not a competing default workflow owner
+  - `vc-debug`
+  - `vc-agent-strategy-compare`
+  - `vc-intent-clarify`
+  - `vc-autopilot`
 
 Former workflow-owner skills such as `vc:plan`, `vc:research`, `vc:cook`, `vc:fix`, and `vc:code-review` are migration sources only. Their useful practices should be absorbed into the surviving actor/contract surfaces instead of being routed as separate default workflows.
 
@@ -381,6 +381,10 @@ but Claude's YAML `tools:` allowlists are not guaranteed to be enforced by Codex
 - Claude tools: Read, Write, Edit, Grep, Glob, Bash, update_memory
 - Use: Capturing learnings, updating documentation
 
+> **Tier-1 REQUIRED audits in UPDATE PROCESS (C4):** `vc-audit-vc`, `vc-audit-context`, and `vc-audit-plans` are not merely on-demand tools — they are Tier-1 REQUIRED gates the UPDATE PROCESS phase MUST run per change type (harness/agent edits → `vc-audit-vc`; context-doc edits → `vc-audit-context`; plan/program edits → `vc-audit-plans`). See `process/development-protocols/vc-system-behavior/12-reference.md`.
+
+> **Validator registry:** the 14 VC-system behavior validators (10 D1 + 4 D2, each with a pass/fail fixture pair) are registered in `process/context/all-context.md` §Testing-and-Quality. Run the change-type-relevant validator before closing a phase.
+
 ### Specialist Agents
 
 These agents add capabilities beyond the core RIPER-5 workflow. They are invoked by the
@@ -388,12 +392,12 @@ orchestrator or by execute-agent when specialized work is needed.
 
 During EXECUTE phase:
 
-- `vc-tester` - Diff-aware test verification. Maps changed files to test files, runs only affected tests. Invoke after implementation sub-steps complete.
-- `vc-debugger` - Root cause analysis for bugs. Evidence-before-hypothesis methodology. Can also be invoked standalone.
-- `vc-code-reviewer` - Production-readiness review. Edge case scouting, N+1 detection, auth path validation. Invoke as pre-PR quality gate.
-- `vc-code-simplifier` - Post-implementation refactor for clarity without behavior change. Invoke after code-reviewer passes.
-- `vc-ui-ux-designer` - Design-aware frontend implementation. Invoke for UI/UX tasks within execute phase.
-- `vc-git-manager` - Clean conventional commits. Invoke for git operations.
+- [.claude/agents/vc-tester.md](.claude/agents/vc-tester.md) - Diff-aware test verification. Maps changed files to test files, runs only affected tests. Invoke after implementation sub-steps complete.
+- [.claude/agents/vc-debugger.md](.claude/agents/vc-debugger.md) - Root cause analysis for bugs. Evidence-before-hypothesis methodology. Can also be invoked standalone.
+- [.claude/agents/vc-code-reviewer.md](.claude/agents/vc-code-reviewer.md) - Production-readiness review. Edge case scouting, N+1 detection, auth path validation. Invoke as pre-PR quality gate.
+- [.claude/agents/vc-code-simplifier.md](.claude/agents/vc-code-simplifier.md) - Post-implementation refactor for clarity without behavior change. Invoke after code-reviewer passes.
+- [.claude/agents/vc-ui-ux-designer.md](.claude/agents/vc-ui-ux-designer.md) - Design-aware frontend implementation. Invoke for UI/UX tasks within execute phase.
+- [.claude/agents/vc-git-manager.md](.claude/agents/vc-git-manager.md) - Clean conventional commits. Invoke for git operations.
 
 Note: shared review methodology has been absorbed into the `vc-code-reviewer` agent prompt. Route to the agent directly instead of a separate review-owner workflow when the agent is the appropriate path.
 
@@ -402,14 +406,12 @@ Cross-phase utilities (skills, not agents):
 - `vc-sequential-thinking` - Structured reasoning, usable in any phase
 - `vc-problem-solving` - Cognitive toolkit when stuck in any phase
 - `vc-scout` - Fast codebase scouting, usable in RESEARCH
-- `vc-tech-graph` - Publish-grade SVG/PNG technical diagram generator for durable process artifacts; pair with `vc-preview` for review or explanation after generation
-- `vc-watzup` - Read-only repo, local/remote ref, worktree, and active-plan handoff summary helper with advisory-only selected-plan hints
-- `vc-xia` - Repo comparison and adaptation-prep helper with recon, map, analyze, and challenge stages that stops before planning or coding
-- `vc-repomix` - Repository packing helper for references-only artifacts, audits, and feature-porting prep
-- `vc-chrome-devtools` / `vc-agent-browser` - Browser automation, primarily EXECUTE
-- `vc-context-engineering` - Token optimization guidance, any phase
+- `vc-agent-browser` - Browser automation, primarily EXECUTE
 - `vc:debug` - Specialist root-cause-analysis helper, usable alongside `vc-debugger`
 - `vc-autoresearch` - Autonomous iterative optimization loop after execute phase for measurable metrics
+- `vc-agent-strategy-compare` - Strategy recommendation at every phase boundary
+- `vc-intent-clarify` - Ambiguity scoring and clarification round
+- `vc-autopilot` - Autopilot Mode trigger and per-gate decision policy
 
 ### Discovery Note
 
@@ -439,11 +441,6 @@ Skill Registry:
 | `vc-autoresearch` | Autonomous metric optimization loop | improve coverage, reduce bundle, optimize metric |
 | `vc-predict` | 5-persona pre-implementation debate | risks, predict issues, architectural review |
 | `vc-scout` | Fast parallel codebase scouting | find files, where is, search codebase |
-| `vc-tech-graph` | Publish-grade technical diagrams as SVG or PNG for durable process artifacts | generate diagram, architecture diagram, flowchart, sequence diagram, system visual |
-| `vc-watzup` | Read-only branch, local/remote ref, worktree, and active-plan handoff summary with advisory selected-plan hints | what's in flight, handoff, worktree status, active plans, next steps |
-| `vc-xia` | Repo comparison and adaptation-prep research | copy from repo, compare repo, adapt from repo, study how they built it, analyze feature parity |
-| `vc-repomix` | Pack local or remote repos into references-only artifacts | pack repo, snapshot codebase, repo context, compare repo, feature port, security audit |
-| `vc-docs` | Project documentation management | docs, README, document codebase |
 | `vc-docs-seeker` | Library docs via context7 | how does X work, API docs, version, syntax |
 | `vc-generate-plan` | Durable implementation planning | plan, PRD, spec, implementation plan |
 | `vc-generate-context` | Refresh repository context router | refresh context, regenerate context, repo context |
@@ -452,12 +449,17 @@ Skill Registry:
 | `vc-web-testing` | Playwright/Vitest/k6 test automation | tests, e2e, integration test, performance test |
 | `vc-sequential-thinking` | Step-by-step reasoning | complex problem, think through, analyze step by step |
 | `vc-problem-solving` | Cognitive unblocking techniques | stuck, can't figure out, complex, spiral |
-| `vc-context-engineering` | Token/context optimization | context limit, token usage, optimize context |
-| `vc-preview` | Visual diagrams, slides, file viewer | diagram, visualize, slides, preview |
-| `vc-mcp-management` | MCP server tools | MCP, model context protocol |
-| `vc-chrome-devtools` | Puppeteer browser automation | browser, screenshot, scrape, automate browser |
 | `vc-agent-browser` | AI browser automation CLI | long browser session, browserbase, visual testing |
-| `vc-team` | Multi-agent parallel collaboration | parallel agents, multi-agent, team |
+| `vc-agent-strategy-compare` | Execution strategy recommendation at phase boundaries | strategy, parallel agents, sequential, workflow |
+| `vc-intent-clarify` | Ambiguity scoring and clarification round | clarify intent, ambiguous request |
+| `vc-autopilot` | Autopilot Mode trigger and decision policy | autopilot, autonomous mode, full autonomy |
+| `vc-generate-spec` | Product-discovery requirements doc | spec, requirements, user stories |
+| `vc-feasibility-test` | Empirical feasibility probe before implementation | feasible, viable, probe, test approach |
+| `vc-generate-closeout` | Phase closeout packet and EVL handoff | closeout, archive, wrap up |
+| `vc-risk-evidence-pack` | Evidence pack for high-risk work | risk, auth risk, billing risk, schema risk |
+| `vc-test-coverage-plan` | Test coverage planning for validate-contract | test coverage, test strategy |
+| `vc-plan-discovery` | Active-plan discovery across features | find plan, resume plan |
+| `vc-review-situation` | Situation review and plan orientation | review situation, where am I |
 | `vc-setup` | Scaffold agent harness into new project | seed, harness, bootstrap, new project, scaffold, setup |
 | `vc-update` | Pull latest harness from remote kit repo | update harness, pull kit, sync harness, upgrade agents |
 | `vc-publish` | Push harness improvements to remote kit repo | publish kit, push harness, release kit, update remote |
@@ -603,7 +605,7 @@ EXECUTE -> UPDATE PROCESS:
 
 **Parallel Fan-Out**
 
-At each phase transition above, consult `process/development-protocols/parallel-fan-out.md` for signal-based parallel subagent recommendations. See orchestration.md for the checkpoint summary.
+At each phase transition above, invoke `vc-agent-strategy-compare` for the next phase's strategy recommendation. See `process/development-protocols/orchestration.md` for the checkpoint summary.
 
 ## Key Principles
 

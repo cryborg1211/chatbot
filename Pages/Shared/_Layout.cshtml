@@ -1,5 +1,7 @@
+@using chatbot.Infrastructure.Authorization
 @{
     var activeNav = ViewData["ActiveNav"]?.ToString() ?? "Users";
+    var isAdmin   = User?.IsInRole(Roles.Admin) ?? false;
 }
 <!DOCTYPE html>
 <html lang="vi">
@@ -37,26 +39,37 @@
 
                 <!-- Admin Navigation -->
                 <nav class="space-y-0.5">
-                    <a href="/admin"
-                       class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm @(activeNav == "Users" ? "font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" : "text-gray-600 hover:bg-gray-100 transition dark:text-gray-300 dark:hover:bg-gray-700/50")">
-                        <i class="fa-solid fa-users text-sm w-5 text-center @(activeNav == "Users" ? "text-blue-500" : "text-gray-400")"></i>
-                        <span>Quản lý người dùng</span>
+                    @if (isAdmin)
+                    {
+                        <a href="/admin"
+                           class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm @(activeNav == "Users" ? "font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" : "text-gray-600 hover:bg-gray-100 transition dark:text-gray-300 dark:hover:bg-gray-700/50")">
+                            <i class="fa-solid fa-users text-sm w-5 text-center @(activeNav == "Users" ? "text-blue-500" : "text-gray-400")"></i>
+                            <span>Quản lý người dùng</span>
+                        </a>
+                    }
+                    <a href="/admin/documents"
+                       class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm @(activeNav == "Documents" ? "font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" : "text-gray-600 hover:bg-gray-100 transition dark:text-gray-300 dark:hover:bg-gray-700/50")">
+                        <i class="fa-regular fa-folder-open text-sm w-5 text-center @(activeNav == "Documents" ? "text-blue-500" : "text-gray-400")"></i>
+                        <span>Tài liệu tri thức</span>
                     </a>
-                    <a href="/admin/feedback"
-                       class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm @(activeNav == "Feedback" ? "font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" : "text-gray-600 hover:bg-gray-100 transition dark:text-gray-300 dark:hover:bg-gray-700/50")">
-                        <i class="fa-regular fa-comment-dots text-sm w-5 text-center @(activeNav == "Feedback" ? "text-blue-500" : "text-gray-400")"></i>
-                        <span>Phản hồi &amp; Đánh giá</span>
-                    </a>
-                    <a href="/admin/logs"
-                       class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm @(activeNav == "Logs" ? "font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" : "text-gray-600 hover:bg-gray-100 transition dark:text-gray-300 dark:hover:bg-gray-700/50")">
-                        <i class="fa-solid fa-clock-rotate-left text-sm w-5 text-center @(activeNav == "Logs" ? "text-blue-500" : "text-gray-400")"></i>
-                        <span>Nhật ký hệ thống</span>
-                    </a>
-                    <a href="/admin/ai-settings"
-                       class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm @(activeNav == "AiSettings" ? "font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" : "text-gray-600 hover:bg-gray-100 transition dark:text-gray-300 dark:hover:bg-gray-700/50")">
-                        <i class="fa-solid fa-microchip text-sm w-5 text-center @(activeNav == "AiSettings" ? "text-blue-500" : "text-gray-400")"></i>
-                        <span>Cấu hình AI</span>
-                    </a>
+                    @if (isAdmin)
+                    {
+                        <a href="/admin/feedback"
+                           class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm @(activeNav == "Feedback" ? "font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" : "text-gray-600 hover:bg-gray-100 transition dark:text-gray-300 dark:hover:bg-gray-700/50")">
+                            <i class="fa-regular fa-comment-dots text-sm w-5 text-center @(activeNav == "Feedback" ? "text-blue-500" : "text-gray-400")"></i>
+                            <span>Phản hồi &amp; Đánh giá</span>
+                        </a>
+                        <a href="/admin/logs"
+                           class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm @(activeNav == "Logs" ? "font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" : "text-gray-600 hover:bg-gray-100 transition dark:text-gray-300 dark:hover:bg-gray-700/50")">
+                            <i class="fa-solid fa-clock-rotate-left text-sm w-5 text-center @(activeNav == "Logs" ? "text-blue-500" : "text-gray-400")"></i>
+                            <span>Nhật ký hệ thống</span>
+                        </a>
+                        <a href="/admin/ai-settings"
+                           class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm @(activeNav == "AiSettings" ? "font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" : "text-gray-600 hover:bg-gray-100 transition dark:text-gray-300 dark:hover:bg-gray-700/50")">
+                            <i class="fa-solid fa-microchip text-sm w-5 text-center @(activeNav == "AiSettings" ? "text-blue-500" : "text-gray-400")"></i>
+                            <span>Cấu hình AI</span>
+                        </a>
+                    }
                 </nav>
             </div>
 
