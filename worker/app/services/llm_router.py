@@ -1,7 +1,7 @@
-"""LLM backend — v1 routes everything to Ollama (Qwen 2.5 / Gemma / DeepSeek).
+"""LLM backend — provider-agnostic router (Ollama / OpenAI / Anthropic / Gemini).
 
-Wrapped behind a thin class so swapping in Gemini / OpenAI later is a
-single-file change (master plan §3.7, parking lot §7).
+The concrete backend is built by :func:`build_chat_llm`; provider SDKs are
+imported lazily so an uninstalled cloud provider never breaks the default path.
 
 This module also OWNS the global anti-hallucination system prompt. The
 strict "read tables row-by-row, never invent numbers" instructions are
@@ -34,31 +34,81 @@ When processing table data, you MUST strictly adhere to the following rules:
 """
 
 
-class LlmRouter:
-    """Streaming chat over the configured Ollama instance."""
+SUPPORTED_PROVIDERS: tuple[str, ...] = ("ollama", "openai", "anthropic", "gemini")
 
-    def __init__(
-        self,
-        base_url: str,
-        model: str,
-        timeout: float = 120.0,
-        temperature: float = 0.1,
-    ):
-        # Imported lazily so the (heavy) llama_index modules don't load
-        # at process start if someone monkey-patches the router for tests.
+
+def build_chat_llm(
+    provider: str,
+    model: str,
+    *,
+    api_key: str | None = None,
+    base_url: str | None = None,
+    timeout: float = 120.0,
+    temperature: float = 0.1,
+):
+    """Build a llama-index streaming chat LLM for ``provider``.
+
+    Provider SDKs are imported lazily, so an uninstalled cloud provider never
+    breaks the (Ollama-only) default path. Cloud providers need their package:
+    ``llama-index-llms-openai`` / ``-anthropic`` / ``-gemini`` (installed in Phase 4).
+    """
+    provider = (provider or "ollama").strip().lower()
+
+    if provider == "ollama":
         from llama_index.llms.ollama import Ollama
-
-        self._model = model
-        self._llm = Ollama(
+        return Ollama(
             model=model,
-            base_url=base_url,
+            base_url=base_url or "http://localhost:11434",
             request_timeout=timeout,
             temperature=temperature,
         )
-        logger.info(
-            "llm_router_ready backend=ollama model=%s base_url=%s temperature=%.2f system_prompt_chars=%d",
-            model, base_url, temperature, len(ENFORCED_SYSTEM_PROMPT),
+    if provider == "openai":
+        from llama_index.llms.openai import OpenAI
+        return OpenAI(model=model, api_key=api_key, temperature=temperature, timeout=timeout)
+    if provider == "anthropic":
+        from llama_index.llms.anthropic import Anthropic
+        return Anthropic(model=model, api_key=api_key, temperature=temperature, timeout=timeout)
+    if provider == "gemini":
+        from llama_index.llms.gemini import Gemini
+        return Gemini(model_name=model, api_key=api_key, temperature=temperature)
+
+    raise ValueError(
+        f"Unsupported LLM provider: {provider!r}. Expected one of {SUPPORTED_PROVIDERS}."
+    )
+
+
+class LlmRouter:
+    """Streaming chat over any supported provider. Provider-agnostic: owns the
+    enforced system prompt + streaming; the concrete backend comes from
+    :func:`build_chat_llm`. Back-compatible default keeps everything on Ollama."""
+
+    def __init__(
+        self,
+        model: str,
+        provider: str = "ollama",
+        base_url: str | None = None,
+        api_key: str | None = None,
+        timeout: float = 120.0,
+        temperature: float = 0.1,
+    ):
+        self._provider = (provider or "ollama").strip().lower()
+        self._model = model
+        self._llm = build_chat_llm(
+            self._provider,
+            model,
+            api_key=api_key,
+            base_url=base_url,
+            timeout=timeout,
+            temperature=temperature,
         )
+        logger.info(
+            "llm_router_ready provider=%s model=%s temperature=%.2f system_prompt_chars=%d",
+            self._provider, model, temperature, len(ENFORCED_SYSTEM_PROMPT),
+        )
+
+    @property
+    def provider(self) -> str:
+        return self._provider
 
     @property
     def model(self) -> str:

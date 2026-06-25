@@ -6,6 +6,7 @@ using chatbot.Infrastructure.Authorization;
 using chatbot.Infrastructure.Identity;
 using chatbot.Infrastructure.Storage;
 using chatbot.Models;
+using chatbot.Services.Ai;
 using chatbot.Services.Chat;
 using chatbot.Services.Documents;
 using chatbot.Workers;
@@ -88,6 +89,9 @@ builder.Services.AddHttpClient<IAiWorkerClient, AiWorkerClient>();
 // ---------------------------------------------------------------------
 builder.Services.AddScoped<IDocumentService, DocumentService>();
 builder.Services.AddScoped<IChatService,     ChatService>();
+builder.Services.AddScoped<IAiConfigService, AiConfigService>();
+builder.Services.AddScoped<IProviderKeyService, ProviderKeyService>();
+builder.Services.AddDataProtection();
 builder.Services.AddHostedService<DocumentIngestionWorker>();
 
 // ---------------------------------------------------------------------

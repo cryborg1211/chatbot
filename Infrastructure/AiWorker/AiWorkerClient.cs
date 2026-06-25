@@ -23,6 +23,7 @@ public sealed class AiWorkerClient : IAiWorkerClient
     private const string QueryPath    = "query";
     private const string DeletePath   = "documents/delete";
     private const string LlmStatusPath = "llm/status";
+    private const string LlmModelsPath = "llm/models";
 
     /// <summary>
     /// Shared JSON options. snake_case to match Python's Pydantic models,
@@ -204,6 +205,36 @@ public sealed class AiWorkerClient : IAiWorkerClient
                 throw new AiWorkerException("AI worker returned empty body for /llm/status.");
 
             return result;
+        }
+    }
+
+    // ==================================================================
+    //  Model sync (unary, JSON) — never throws
+    // ==================================================================
+
+    public async Task<LlmModelsResult> GetProviderModelsAsync(
+        string provider, string? apiKey,
+        CancellationToken cancellationToken = default)
+    {
+        var payload = new { provider, apiKey };
+        HttpResponseMessage response;
+        try
+        {
+            response = await _http.PostAsJsonAsync(LlmModelsPath, payload, JsonOpts, cancellationToken);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            _logger.LogWarning(ex, "llm_models transport failure");
+            return new LlmModelsResult { Ok = false, Error = "AI worker unreachable." };
+        }
+
+        using (response)
+        {
+            if (!response.IsSuccessStatusCode)
+                return new LlmModelsResult { Ok = false, Error = $"HTTP {(int)response.StatusCode}" };
+
+            var result = await response.Content.ReadFromJsonAsync<LlmModelsResult>(JsonOpts, cancellationToken);
+            return result ?? new LlmModelsResult { Ok = false, Error = "Empty response." };
         }
     }
 

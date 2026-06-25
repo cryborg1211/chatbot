@@ -36,16 +36,16 @@ Deliver the page + live observability. No mutation.
 - Remaining: new worker endpoint to report LLM status (ping Ollama `/api/tags`) + installed models; `IAiWorkerClient` method; `AiSettingsModel` calls it and renders **real** status cards + Ollama model list + connection badge. Worker-down → graceful "offline".
 - Plan: `ai-settings-phase1-status_PLAN_18-06-26.md`
 
-### Phase 2 — Settings store + live Ollama model switch
+### Phase 2 — Settings store + live Ollama model switch  ← code-complete (pending live test)
 - `AiConfig` EF table + migration; admin can pick from installed Ollama models and switch the active model **without restart**.
 - Worker reads `model` per-request (from `QueryRequest`) instead of the boot singleton; .NET passes the configured model on every `/api/query`.
 - Wire the "Lưu thay đổi" + Ollama model dropdown + advanced knobs (temperature/top_k/timeout/base url) to the store.
 
-### Phase 3 — Provider abstraction (worker, internal)
+### Phase 3 — Provider abstraction (worker, internal)  ← code-complete
 - Refactor `LlmRouter` → provider-agnostic factory/strategy: Ollama / OpenAI / Anthropic / Gemini, each with streaming `stream_chat`. Preserve `ENFORCED_SYSTEM_PROMPT` injection.
 - Add provider SDKs (llama-index integrations or native). No UI change.
 
-### Phase 4 — Keys + cloud/local routing + connectivity tests
+### Phase 4 — Keys + cloud/local routing + connectivity tests  ← code-complete (migration + live test pending)
 - Encrypted key storage (Data Protection) + admin UI to enter/replace keys (write-only).
 - Per-provider "Kiểm tra" → real validation (cheap provider call); status badges go live.
 - Select active provider; `/api/query` forwards `{provider, model, api_key}`; worker routes accordingly.
@@ -74,4 +74,7 @@ Advance one phase at a time: research subagent/inline → execution approval →
 ## Status log
 
 - 2026-06-18 — Program created. Research done. UI mockup approved by user. Phase 1 UI shell built (static). Phase 1 backend pending.
-- 2026-06-18 — Phase 1 backend done: worker `GET /api/llm/status` (pings Ollama `/api/tags`) + `IAiWorkerClient.GetLlmStatusAsync` + live status wired into the page (active model, Ollama reachability, installed-model dropdown, graceful offline). Handler verified against local Ollama (7 models). `dotnet build` + Python import/handler checks green. Pending live restart smoke test. **Next: Phase 2** (settings store + live model switch).
+- 2026-06-18 — Phase 1 backend done: worker `GET /api/llm/status` (pings Ollama `/api/tags`) + `IAiWorkerClient.GetLlmStatusAsync` + live status wired into the page (active model, Ollama reachability, installed-model dropdown, graceful offline). Handler verified against local Ollama (7 models). `dotnet build` + Python import/handler checks green. Pending live restart smoke test. **Next: Phase 2** (settings store + live model switch). (Phase 1 committed by user as `feaf8b6`.)
+- 2026-06-18 — Phase 2 code-complete: `AiConfig` table (migration `20260618071444_AddAiConfig` **created + applied**) + `AiConfigService`; per-request model flows .NET `QueryRequest` → worker `_select_llm` (transient router, no singleton mutation); `ChatService` resilient read; page form saves the Ollama model (PRG). Build clean; worker schema/function verified. Advanced knobs (temp/top_k UI) deferred. Plan: `ai-settings-phase2-model-switch_PLAN_18-06-26.md`. **Next: Phase 3** (worker provider abstraction). Pending live restart smoke test.
+- 2026-06-18 — Phase 3 code-complete: `worker/app/services/llm_router.py` is provider-agnostic — `build_chat_llm` factory (ollama/openai/anthropic/gemini, lazy imports) + `LlmRouter` refactor (back-compat default = ollama; `main.py`/`query.py` callers unchanged). `ENFORCED_SYSTEM_PROMPT` + streaming untouched. Cloud SDKs not installed (lazy → worker still boots Ollama-only). Verified: import, Ollama construct, unknown→ValueError, cloud→lazy import. Plan: `ai-settings-phase3-provider-abstraction_PLAN_18-06-26.md`. **Next: Phase 4** (per-request provider+key routing, encrypted keys, connectivity tests, UI).
+- 2026-06-18 — Phase 4 code-complete: async page (OnGet = config only; `?handler=Status` JSON fetched by JS — no blocking); encrypted keys (`AiProviderKey` + `ProviderKeyService` via Data Protection, never echoed); cloud/local routing (`QueryRequest`+provider/api_key, `ChatService` decrypts+forwards, worker `_select_llm` routes); connectivity test (`POST /api/llm/test` + `TestLlmAsync` + AJAX). OpenAI SDK installed. Verified: C# compiles (isolated), worker import/routes, openai builds. **BLOCKED**: `AddAiProviderKey` migration needs the app stopped (running app locks bin/). Plan: `ai-settings-phase4-keys-routing_PLAN_18-06-26.md`.

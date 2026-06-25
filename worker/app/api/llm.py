@@ -13,6 +13,7 @@ from typing import Annotated
 
 import httpx
 from fastapi import APIRouter, Depends
+from pydantic import BaseModel
 
 from ..auth import require_api_key
 from ..config import Settings, get_settings
@@ -47,3 +48,86 @@ async def llm_status(
         "ollama_reachable": reachable,
         "installed_models": models,
     }
+
+
+class LlmProviderRequest(BaseModel):
+    provider: str
+    model: str | None = None
+    api_key: str | None = None
+
+
+# Substrings that mark a NON-text model (embeddings / audio / image / etc.).
+_NON_TEXT_MARKERS: tuple[str, ...] = (
+    "embed", "embedding", "whisper", "tts", "audio", "speech", "transcrib",
+    "voice", "dall-e", "dalle", "image", "imagen", "vision-", "ocr",
+    "moderation", "rerank", "clip", "sora", "veo", "realtime", "live",
+    "banana", "video", "diffusion", "computer-use", "search", "similarity",
+    "-edit", "edit-", "codex",
+)
+
+
+def _is_text_model(name: str) -> bool:
+    """True when `name` looks like a text/chat model (not embeddings/audio/image)."""
+    n = name.lower()
+    return not any(marker in n for marker in _NON_TEXT_MARKERS)
+
+
+@router.post("/llm/models")
+async def llm_models(
+    req: LlmProviderRequest,
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Fetch the live model list for a provider, keep only text/chat models.
+    Returns ``{ok, models[], error?}`` — never raises. Auth errors (401 etc.)
+    are surfaced verbatim, not swallowed."""
+    provider = (req.provider or "ollama").strip().lower()
+    key = req.api_key or ""
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            if provider == "ollama":
+                resp = await client.get(f"{settings.ollama_base_url.rstrip('/')}/api/tags")
+                if resp.status_code != 200:
+                    return {"ok": False, "error": f"HTTP {resp.status_code}: {resp.text[:200]}"}
+                names = [m.get("name", "") for m in resp.json().get("models", [])]
+
+            elif provider == "openai":
+                resp = await client.get(
+                    "https://api.openai.com/v1/models",
+                    headers={"Authorization": f"Bearer {key}"},
+                )
+                if resp.status_code != 200:
+                    return {"ok": False, "error": f"HTTP {resp.status_code}: {resp.text[:200]}"}
+                names = [m.get("id", "") for m in resp.json().get("data", [])]
+
+            elif provider == "anthropic":
+                resp = await client.get(
+                    "https://api.anthropic.com/v1/models",
+                    headers={"x-api-key": key, "anthropic-version": "2023-06-01"},
+                )
+                if resp.status_code != 200:
+                    return {"ok": False, "error": f"HTTP {resp.status_code}: {resp.text[:200]}"}
+                names = [m.get("id", "") for m in resp.json().get("data", [])]
+
+            elif provider == "gemini":
+                resp = await client.get(
+                    "https://generativelanguage.googleapis.com/v1beta/models",
+                    params={"key": key},
+                )
+                if resp.status_code != 200:
+                    return {"ok": False, "error": f"HTTP {resp.status_code}: {resp.text[:200]}"}
+                names = [
+                    m.get("name", "").split("/")[-1]
+                    for m in resp.json().get("models", [])
+                    if "generateContent" in (m.get("supportedGenerationMethods") or [])
+                ]
+
+            else:
+                return {"ok": False, "error": f"Unsupported provider: {provider!r}"}
+
+        models = sorted({n for n in names if n and _is_text_model(n)})
+        return {"ok": True, "models": models}
+
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("llm_models_failed provider=%s err=%s", provider, exc)
+        return {"ok": False, "error": str(exc)[:300]}

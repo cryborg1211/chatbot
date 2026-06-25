@@ -54,6 +54,14 @@ public interface IAiWorkerClient
     /// itself is unreachable.
     /// </summary>
     Task<LlmStatus> GetLlmStatusAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Live, text-only model list for a provider via <c>POST /llm/models</c>.
+    /// Never throws — auth/transport errors come back in <see cref="LlmModelsResult.Error"/>.
+    /// </summary>
+    Task<LlmModelsResult> GetProviderModelsAsync(
+        string provider, string? apiKey,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>Thrown when the worker is unreachable or returns an unparseable response.</summary>

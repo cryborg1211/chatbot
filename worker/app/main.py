@@ -85,6 +85,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.retriever       = retriever
     app.state.prompt_builder  = prompt_builder
     app.state.llm             = llm_router
+    # Ollama params so a per-request model/temperature override can build a
+    # transient router without rebuilding the boot singleton.
+    app.state.ollama_cfg      = {
+        "base_url":    settings.ollama_base_url,
+        "timeout":     settings.ollama_timeout,
+        "temperature": settings.ollama_temperature,
+    }
+    app.state.default_model   = settings.ollama_model
     app.state.retrieval_top_k = settings.retrieval_top_k
 
     # ---- arq Redis pool (used by /api/documents/upload) ----

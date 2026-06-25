@@ -21,7 +21,14 @@ public sealed record QueryRequest(
     string Query,
     string DepartmentId,
     IReadOnlyList<ChatHistoryItem> History,
-    string UserId);
+    string UserId,
+    // Admin-selected overrides (from AiConfig). Null = let the worker use its
+    // own .env default. Null values are omitted from the JSON body.
+    string? Provider    = null,
+    string? Model       = null,
+    string? ApiKey      = null,
+    double? Temperature = null,
+    int?    TopK        = null);
 
 /// <summary>One prior turn of the conversation, as Python expects it.</summary>
 public sealed record ChatHistoryItem(

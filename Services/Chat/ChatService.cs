@@ -5,6 +5,7 @@ using chatbot.Infrastructure.AiWorker;
 using chatbot.Infrastructure.AiWorker.Contracts;
 using chatbot.Infrastructure.Audit;
 using chatbot.Models;
+using chatbot.Services.Ai;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -21,19 +22,25 @@ public sealed class ChatService : IChatService
 
     private readonly ApplicationDbContext _db;
     private readonly IAiWorkerClient _worker;
+    private readonly IAiConfigService _aiConfig;
+    private readonly IProviderKeyService _providerKeys;
     private readonly IAuditLogger _audit;
     private readonly ILogger<ChatService> _logger;
 
     public ChatService(
         ApplicationDbContext db,
         IAiWorkerClient worker,
+        IAiConfigService aiConfig,
+        IProviderKeyService providerKeys,
         IAuditLogger audit,
         ILogger<ChatService> logger)
     {
-        _db     = db;
-        _worker = worker;
-        _audit  = audit;
-        _logger = logger;
+        _db           = db;
+        _worker       = worker;
+        _aiConfig     = aiConfig;
+        _providerKeys = providerKeys;
+        _audit        = audit;
+        _logger       = logger;
     }
 
     // ==================================================================
@@ -118,11 +125,39 @@ public sealed class ChatService : IChatService
         // ---- Build chat history (excluding the just-added user message) ----
         var history = await BuildHistoryAsync(conversation.Id, cancellationToken);
 
+        // Admin-selected model/knobs (null = worker defaults). Resilient: if the
+        // AiConfig table/row can't be read (e.g. migration not applied yet), fall
+        // back to worker defaults so chat never breaks on a config read.
+        AiConfig? config = null;
+        try
+        {
+            config = await _aiConfig.GetAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "ai_config_read_failed — falling back to worker defaults");
+        }
+
+        // Cloud keys are decrypted only here, to forward over the authenticated
+        // local worker hop. Ollama needs no key.
+        var provider = config?.ActiveProvider;
+        string? apiKey = null;
+        if (!string.IsNullOrWhiteSpace(provider) && provider != "ollama")
+        {
+            try { apiKey = await _providerKeys.GetPlaintextAsync(provider, cancellationToken); }
+            catch (Exception ex) { _logger.LogWarning(ex, "ai_provider_key_read_failed provider={Provider}", provider); }
+        }
+
         var request = new QueryRequest(
             Query:        userMessage,
             DepartmentId: departmentId,
             History:      history,
-            UserId:       userId);
+            UserId:       userId,
+            Provider:     provider,
+            Model:        config?.ActiveModel,
+            ApiKey:       apiKey,
+            Temperature:  config?.Temperature,
+            TopK:         config?.TopK);
 
         // ---- Accumulators (assembled across the streamed events) ----
         var fullReply        = new StringBuilder();

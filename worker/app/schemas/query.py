@@ -25,7 +25,7 @@ class QueryRequest(BaseModel):
     serialised through ``JsonNamingPolicy.SnakeCaseLower``.
     """
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, protected_namespaces=())
 
     query: str = Field(..., min_length=1, max_length=4000)
 
@@ -36,3 +36,10 @@ class QueryRequest(BaseModel):
     history: list[HistoryItem] = Field(default_factory=list)
 
     user_id: str | None = Field(default=None, description="For audit logging only.")
+
+    # ---- Admin-selected overrides from .NET AiConfig (None = worker default) ----
+    provider: str | None = Field(default=None, max_length=32)
+    model: str | None = Field(default=None, max_length=128)
+    api_key: str | None = Field(default=None)
+    temperature: float | None = Field(default=None, ge=0.0, le=2.0)
+    top_k: int | None = Field(default=None, ge=1, le=100)
