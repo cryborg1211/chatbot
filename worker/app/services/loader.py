@@ -13,7 +13,9 @@ from __future__ import annotations
 
 import dataclasses
 import logging
+import re
 import tempfile
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -128,15 +130,48 @@ def _load_text(file_bytes: bytes, original_name: str) -> list[Any]:
     return [Document(text=text, metadata={"source": original_name})]
 
 
-def _load_docling(file_bytes: bytes, original_name: str, suffix: str) -> list[Any]:
-    from docling.document_converter import DocumentConverter
+@lru_cache(maxsize=1)
+def _pdf_converter() -> Any:
+    """Docling converter tuned for PDF: OCR on (scanned pages, Vietnamese) +
+    accurate table-structure recovery for complex tables. Built once (heavy —
+    loads TableFormer + OCR models), reused across uploads via the cache."""
+    from docling.document_converter import DocumentConverter, PdfFormatOption
+    from docling.datamodel.base_models import InputFormat
+    from docling.datamodel.pipeline_options import PdfPipelineOptions, TableFormerMode
 
+    opts = PdfPipelineOptions()
+    opts.do_ocr = True                       # OCR scanned / image-only pages
+    opts.do_table_structure = True
+    opts.table_structure_options.mode = TableFormerMode.ACCURATE   # complex tables
+    opts.table_structure_options.do_cell_matching = True
+
+    # Vietnamese + English OCR. EasyOCR has solid `vi`; fall back to Docling's
+    # default engine if EasyOCR isn't importable.
+    try:
+        from docling.datamodel.pipeline_options import EasyOcrOptions
+        opts.ocr_options = EasyOcrOptions(lang=["vi", "en"])
+    except Exception:  # noqa: BLE001
+        logger.warning("EasyOCR unavailable — using Docling default OCR engine.")
+
+    return DocumentConverter(
+        format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=opts)}
+    )
+
+
+@lru_cache(maxsize=1)
+def _default_converter() -> Any:
+    """Plain Docling converter for DOCX (no OCR needed). Built once."""
+    from docling.document_converter import DocumentConverter
+    return DocumentConverter()
+
+
+def _load_docling(file_bytes: bytes, original_name: str, suffix: str) -> list[Any]:
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
         tmp.write(file_bytes)
         tmp_path = Path(tmp.name)
 
     try:
-        converter = DocumentConverter()
+        converter = _pdf_converter() if suffix == ".pdf" else _default_converter()
         result = converter.convert(tmp_path)
         markdown_text = result.document.export_to_markdown()
         docling_doc = result.document
@@ -148,6 +183,12 @@ def _load_docling(file_bytes: bytes, original_name: str, suffix: str) -> list[An
     if not markdown_text.strip():
         raise LoaderError(f"{suffix.upper().lstrip('.')} has no readable Markdown content.")
 
+    # Quality gate — reject blurry / failed-OCR PDFs before they become useless chunks.
+    if suffix == ".pdf":
+        ok, reason = _assess_pdf_quality(markdown_text, docling_doc)
+        if not ok:
+            raise LoaderError(reason)
+
     return [
         DoclingResult(
             text=markdown_text,
@@ -155,3 +196,57 @@ def _load_docling(file_bytes: bytes, original_name: str, suffix: str) -> list[An
             metadata={"source": original_name, "parser": "docling"},
         )
     ]
+
+
+# ---------------------------------------------------------------------
+#  PDF quality gate — blurry / failed-OCR detection
+# ---------------------------------------------------------------------
+
+_MIN_CHARS_PER_PAGE    = 50      # below = near-empty page (blur / blank scan)
+_MIN_WORDS_PER_PAGE    = 12      # below = no real extractable text
+_MIN_ALPHA_RATIO       = 0.30    # below = symbol soup / OCR noise
+_MAX_REPLACEMENT_RATIO = 0.03    # decode / OCR garbage (U+FFFD)
+
+
+def _assess_pdf_quality(text: str, docling_doc: Any) -> tuple[bool, str]:
+    """Heuristic gate for blurry / low-quality / failed-OCR PDFs.
+
+    Returns ``(ok, reason)``; ``reason`` is a Vietnamese, user-facing message
+    when rejected. Conservative — only trips on clearly bad extractions, so
+    dense valid documents (including table-heavy) pass.
+    """
+    body = text.strip()
+    total = len(body)
+
+    try:
+        pages = max(1, len(getattr(docling_doc, "pages", {}) or {}))
+    except Exception:  # noqa: BLE001
+        pages = 1
+
+    letters = sum(ch.isalpha() for ch in body)
+    words = re.findall(r"[^\W\d_]{2,}", body)   # Unicode alpha tokens, len >= 2
+    repl = body.count("�")
+
+    chars_per_page = total / pages
+    words_per_page = len(words) / pages
+    alpha_ratio = letters / total if total else 0.0
+    repl_ratio  = repl / total if total else 0.0
+
+    near_empty = chars_per_page < _MIN_CHARS_PER_PAGE and words_per_page < _MIN_WORDS_PER_PAGE
+    if total < 20 or near_empty:
+        return False, (
+            f"Chất lượng PDF quá thấp (có thể bị mờ hoặc scan kém). "
+            f"Chỉ trích xuất được {total} ký tự / {pages} trang. "
+            f"Vui lòng tải lên bản rõ nét hơn."
+        )
+    if repl_ratio > _MAX_REPLACEMENT_RATIO:
+        return False, (
+            f"PDF chứa quá nhiều ký tự lỗi ({repl_ratio:.0%}) — có thể do mã hóa "
+            f"hoặc OCR thất bại. Vui lòng tải lên bản khác."
+        )
+    if alpha_ratio < _MIN_ALPHA_RATIO:
+        return False, (
+            f"Nội dung trích xuất chủ yếu là ký hiệu/nhiễu (chữ cái {alpha_ratio:.0%}) — "
+            f"PDF có thể bị mờ hoặc OCR kém."
+        )
+    return True, ""

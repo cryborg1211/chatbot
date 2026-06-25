@@ -10,6 +10,7 @@ with a meaningful ``error_code`` / ``message``.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import time
@@ -42,8 +43,6 @@ ALLOWED_MIME_TYPES = {
     "",
 }
     
-print(f"DEBUG: File path is {os.path.abspath(__file__)}")
-print(f"DEBUG: ALLOWED_MIME_TYPES = {ALLOWED_MIME_TYPES}")
 # File extensions accepted as a fallback when the MIME type is generic or empty.
 ALLOWED_EXTENSIONS = {".pdf", ".docx", ".doc", ".txt"}
 
@@ -104,24 +103,14 @@ async def ingest_document(
     embedder:     Embedder     = request.app.state.embedder
     vector_store: VectorStore  = request.app.state.vector_store
 
-    # ---- 5. Pipeline ----
+    # ---- 5. Pipeline (heavy: run OFF the event loop so a slow ingest never
+    #      blocks concurrent /api/query — critical on the throttled 1-thread host) ----
     try:
-        documents = load_documents(file_bytes, mime_type, original_name)
-        nodes = chunker.split(documents)
-        if not nodes:
-            return _failed(document_id, "NO_CONTENT",
-                           "No chunks produced after splitting.", elapsed_ms())
-
-        raw_texts = [n.get_content() for n in nodes]
-        texts = prepend_document_context_to_chunks(raw_texts, original_name)
-        vectors = embedder.encode(texts)
-
-        chunk_count = vector_store.upsert_chunks(
-            document_id=document_id,
-            department_id=department_id,
-            original_name=original_name,
-            chunks=texts,
-            vectors=vectors,
+        chunk_count = await asyncio.to_thread(
+            _run_pipeline,
+            file_bytes, mime_type, original_name,
+            document_id, department_id,
+            chunker, embedder, vector_store,
         )
 
         logger.info(
@@ -164,4 +153,36 @@ def _failed(document_id: str, error_code: str, message: str, elapsed: int) -> JS
             error_code=error_code,
             message=message,
         ).model_dump(mode="json"),
+    )
+
+
+def _run_pipeline(
+    file_bytes: bytes,
+    mime_type: str,
+    original_name: str,
+    document_id: str,
+    department_id: str,
+    chunker: Chunker,
+    embedder: Embedder,
+    vector_store: VectorStore,
+) -> int:
+    """Blocking ingest pipeline (load → chunk → embed → upsert). Runs in a worker
+    thread via ``asyncio.to_thread`` so it never blocks the FastAPI event loop —
+    otherwise a slow PDF parse would stall chat. Raises ``LoaderError`` on parse /
+    empty-content failures (mapped to a 422 by the caller)."""
+    documents = load_documents(file_bytes, mime_type, original_name)
+    nodes = chunker.split(documents)
+    if not nodes:
+        raise LoaderError("NO_CONTENT: No chunks produced after splitting.")
+
+    raw_texts = [n.get_content() for n in nodes]
+    texts = prepend_document_context_to_chunks(raw_texts, original_name)
+    vectors = embedder.encode(texts)
+
+    return vector_store.upsert_chunks(
+        document_id=document_id,
+        department_id=department_id,
+        original_name=original_name,
+        chunks=texts,
+        vectors=vectors,
     )
