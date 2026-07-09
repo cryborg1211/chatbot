@@ -77,3 +77,7 @@ Thumbs.db
 # Runtime user uploads (avatars, etc.) - not source, served from disk
 wwwroot/uploads/
 .vibecode-backup*/
+
+# RAG_test holds REAL government sample documents + derived index dumps — never commit
+RAG_test/doc/
+RAG_test/index/
