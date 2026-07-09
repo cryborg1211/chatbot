@@ -28,10 +28,11 @@ public sealed class DocumentsModel : PageModel
 
     // ---- Render data ----
     public IReadOnlyList<Document> Documents { get; private set; } = Array.Empty<Document>();
-    public int TotalCount      { get; private set; }
-    public int ReadyCount      { get; private set; }
-    public int ProcessingCount { get; private set; }   // Pending + Processing
-    public int FailedCount     { get; private set; }
+    public int TotalCount             { get; private set; }
+    public int ReadyCount             { get; private set; }
+    public int ProcessingCount        { get; private set; }   // Pending + Processing
+    public int FailedCount            { get; private set; }
+    public int PartiallyIngestedCount { get; private set; }
 
     public async Task<IActionResult> OnGetAsync(CancellationToken cancellationToken)
     {
@@ -58,10 +59,11 @@ public sealed class DocumentsModel : PageModel
         int CountFor(DocumentStatus s) =>
             counts.FirstOrDefault(c => c.Status == s)?.Count ?? 0;
 
-        TotalCount      = counts.Sum(c => c.Count);
-        ReadyCount      = CountFor(DocumentStatus.Ready);
-        ProcessingCount = CountFor(DocumentStatus.Pending) + CountFor(DocumentStatus.Processing);
-        FailedCount     = CountFor(DocumentStatus.Failed);
+        TotalCount             = counts.Sum(c => c.Count);
+        ReadyCount             = CountFor(DocumentStatus.Ready);
+        ProcessingCount        = CountFor(DocumentStatus.Pending) + CountFor(DocumentStatus.Processing);
+        FailedCount            = CountFor(DocumentStatus.Failed);
+        PartiallyIngestedCount = CountFor(DocumentStatus.PartiallyIngested);
 
         return Page();
     }

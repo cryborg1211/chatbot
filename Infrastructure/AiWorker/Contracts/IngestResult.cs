@@ -19,6 +19,18 @@ public sealed record IngestResult
     [JsonPropertyName("chunk_count")]
     public int ChunkCount { get; init; }
 
+    /// <summary>
+    /// True when some pages/batches were dropped during parsing (e.g. OCR
+    /// retry still missing pages). Additive/defaulted — an old worker that
+    /// omits this field binds to <c>false</c>.
+    /// </summary>
+    [JsonPropertyName("partial")]
+    public bool Partial { get; init; }
+
+    /// <summary>Human-readable (Vietnamese) reason when <see cref="Partial"/> is true.</summary>
+    [JsonPropertyName("partial_reason")]
+    public string? PartialReason { get; init; }
+
     [JsonPropertyName("elapsed_ms")]
     public long ElapsedMs { get; init; }
 

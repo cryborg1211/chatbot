@@ -227,7 +227,19 @@ public sealed class DocumentService : IDocumentService
                 FileContent:  blobStream
             ), cancellationToken);
 
-            if (result.IsSuccess)
+            if (result.IsSuccess && result.Partial)
+            {
+                await MarkPartiallyIngestedAsync(
+                    document.Id, result.ChunkCount, result.PartialReason, cancellationToken);
+                _ = _audit.LogAsync(
+                    "doc.ingest_partial", "doc", LogSeverity.Warn,
+                    resourceType: nameof(Document),
+                    resourceId:   document.Id.ToString(),
+                    overrideUserId:       document.UploaderId,
+                    overrideDepartmentId: document.DepartmentId,
+                    details: new { chunkCount = result.ChunkCount, elapsedMs = result.ElapsedMs, partialReason = result.PartialReason });
+            }
+            else if (result.IsSuccess)
             {
                 await MarkReadyAsync(document.Id, result.ChunkCount, cancellationToken);
                 _ = _audit.LogAsync(
@@ -287,6 +299,24 @@ public sealed class DocumentService : IDocumentService
                 .SetProperty(d => d.ErrorMessage, (string?)null),
                 ct);
         await BroadcastAsync(id, DocumentStatus.Ready);
+        return n;
+    }
+
+    private async Task<int> MarkPartiallyIngestedAsync(
+        Guid id, int chunkCount, string? partialReason, CancellationToken ct)
+    {
+        // Reuse the ErrorMessage column for the partial reason — same column
+        // MarkFailedAsync uses, truncated identically. No new column, no migration.
+        var truncated = partialReason is { Length: > 1000 } ? partialReason[..1000] : partialReason;
+        var n = await _db.Documents
+            .Where(d => d.Id == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(d => d.Status,       DocumentStatus.PartiallyIngested)
+                .SetProperty(d => d.ChunkCount,   chunkCount)
+                .SetProperty(d => d.ProcessedAt,  DateTime.UtcNow)
+                .SetProperty(d => d.ErrorMessage, truncated),
+                ct);
+        await BroadcastAsync(id, DocumentStatus.PartiallyIngested);
         return n;
     }
 

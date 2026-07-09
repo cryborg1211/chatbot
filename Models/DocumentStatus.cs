@@ -17,4 +17,8 @@ public enum DocumentStatus
 
     /// <summary>Ingestion failed; see <c>ErrorMessage</c>.</summary>
     Failed     = 3,
+
+    /// <summary>Ingestion succeeded but some pages/content were dropped (e.g. OCR
+    /// retry still missing pages). See <c>ErrorMessage</c> for details.</summary>
+    PartiallyIngested = 4,
 }

@@ -13,6 +13,7 @@
         DocumentStatus.Processing => ("bg-yellow-50 text-yellow-700","fa-solid fa-spinner fa-spin",      "Đang vector hóa"),
         DocumentStatus.Pending    => ("bg-gray-100 text-gray-600",   "fa-regular fa-clock",              "Chờ xử lý"),
         DocumentStatus.Failed     => ("bg-red-100 text-red-600",     "fa-solid fa-circle-exclamation",   "Lỗi xử lý"),
+        DocumentStatus.PartiallyIngested => ("bg-amber-50 text-amber-700", "fa-solid fa-triangle-exclamation", "Nhập một phần"),
         _                          => ("bg-gray-100 text-gray-600",  "fa-solid fa-circle",               s.ToString())
     };
 
@@ -50,7 +51,7 @@
 </div>
 
 <!-- Stats Cards -->
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
     <div class="bg-white rounded-lg border border-gray-200 p-5 dark:bg-gray-800 dark:border-gray-700">
         <div class="flex items-center gap-3 mb-2">
             <div class="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center dark:bg-blue-900/30">
@@ -86,6 +87,15 @@
             <span class="text-sm text-gray-500 dark:text-gray-400">Lỗi hệ thống</span>
         </div>
         <p class="text-3xl font-bold text-gray-800 dark:text-gray-100">@Model.FailedCount</p>
+    </div>
+    <div class="bg-white rounded-lg border border-gray-200 p-5 dark:bg-gray-800 dark:border-gray-700">
+        <div class="flex items-center gap-3 mb-2">
+            <div class="w-9 h-9 bg-amber-50 rounded-lg flex items-center justify-center dark:bg-amber-900/30">
+                <i class="fa-solid fa-triangle-exclamation text-amber-500"></i>
+            </div>
+            <span class="text-sm text-gray-500 dark:text-gray-400">Nhập một phần</span>
+        </div>
+        <p class="text-3xl font-bold text-gray-800 dark:text-gray-100">@Model.PartiallyIngestedCount</p>
     </div>
 </div>
 
