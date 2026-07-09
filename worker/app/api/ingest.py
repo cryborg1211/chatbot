@@ -11,8 +11,11 @@ with a meaningful ``error_code`` / ``message``.
 from __future__ import annotations
 
 import asyncio
+import dataclasses
+import gc
 import logging
 import os
+import threading
 import time
 import uuid
 from typing import Annotated
@@ -32,6 +35,12 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["ingest"], dependencies=[Depends(require_api_key)])
 
+# Only one document processes at a time — Docling + bge-m3 + LibreOffice
+# can each use 500MB+; concurrent ingests OOM a laptop.
+_INGEST_LOCK = threading.Lock()
+
+_MIN_RAM_GB = 1.0  # reject ingest if available RAM below this
+
 ALLOWED_MIME_TYPES = {
     "application/pdf",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",  # .docx
@@ -48,6 +57,21 @@ ALLOWED_EXTENSIONS = {".pdf", ".docx", ".doc", ".txt"}
 
 # Defensive cap — the .NET side enforces 20 MB already, but be safe.
 MAX_BYTES = 25 * 1024 * 1024
+
+
+@dataclasses.dataclass
+class _PipelineResult:
+    """Result of ``_run_pipeline`` — chunk count plus the partial-ingest signal.
+
+    ``partial=True`` when any source ``DoclingResult`` reported dropped pages
+    (Fork 3 OCR OR-merge); ``partial_reason`` aggregates the human-readable
+    reasons. Defaults keep the fully-successful path indistinguishable from the
+    old bare-int return semantics.
+    """
+
+    chunk_count: int
+    partial: bool = False
+    partial_reason: str | None = None
 
 
 @router.post(
@@ -106,7 +130,7 @@ async def ingest_document(
     # ---- 5. Pipeline (heavy: run OFF the event loop so a slow ingest never
     #      blocks concurrent /api/query — critical on the throttled 1-thread host) ----
     try:
-        chunk_count = await asyncio.to_thread(
+        pipeline_result = await asyncio.to_thread(
             _run_pipeline,
             file_bytes, mime_type, original_name,
             document_id, department_id,
@@ -114,8 +138,9 @@ async def ingest_document(
         )
 
         logger.info(
-            "ingest_ok document_id=%s dept=%s chunks=%d elapsed_ms=%d",
-            document_id, department_id, chunk_count, elapsed_ms(),
+            "ingest_ok document_id=%s dept=%s chunks=%d partial=%s elapsed_ms=%d",
+            document_id, department_id, pipeline_result.chunk_count,
+            pipeline_result.partial, elapsed_ms(),
         )
 
         return JSONResponse(
@@ -123,8 +148,10 @@ async def ingest_document(
             content=IngestResponse(
                 document_id=document_id,
                 status="success",
-                chunk_count=chunk_count,
+                chunk_count=pipeline_result.chunk_count,
                 elapsed_ms=elapsed_ms(),
+                partial=pipeline_result.partial,
+                partial_reason=pipeline_result.partial_reason,
             ).model_dump(mode="json"),
         )
 
@@ -156,6 +183,99 @@ def _failed(document_id: str, error_code: str, message: str, elapsed: int) -> JS
     )
 
 
+def _reap_leaked_children() -> None:
+    """Reap leaked ``multiprocessing`` child processes after an ingest.
+
+    Windows Docling/torch OCR work spawns ``multiprocessing`` child processes
+    (EasyOCR / TableFormer worker forks) that never exit on this platform —
+    they linger as idle multi-GB RSS corpses and starve system RAM until the
+    next document's ``_check_ram`` precheck fails. Observed today: several idle
+    children holding 1–6 GB RSS each. Tracked as debt item #22.
+
+    Best-effort cleanup: only children whose cmdline carries the
+    ``multiprocessing.spawn`` / ``spawn_main`` signature are touched — never a
+    LibreOffice or any other legitimate child. Runs inside ``_INGEST_LOCK``
+    after the pipeline completes, so no concurrent ingest owns a live child.
+    The whole body is wrapped so it can never raise — reaping is cleanup and
+    must never fail an ingest.
+    """
+    try:
+        import psutil
+
+        matched = []
+        for child in psutil.Process().children(recursive=False):
+            try:
+                cmdline = " ".join(child.cmdline())
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+            except Exception:  # noqa: BLE001 — never let one child abort the sweep
+                continue
+            if "multiprocessing.spawn" not in cmdline and "spawn_main" not in cmdline:
+                continue
+            try:
+                rss_mb = int(child.memory_info().rss / (1024 ** 2))
+            except Exception:  # noqa: BLE001 — rss is best-effort logging only
+                rss_mb = -1
+            logger.warning("reaped_leaked_child pid=%d rss_mb=%d", child.pid, rss_mb)
+            try:
+                child.terminate()
+                matched.append(child)
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+            except Exception:  # noqa: BLE001
+                continue
+        if matched:
+            _, alive = psutil.wait_procs(matched, timeout=5)
+            for survivor in alive:
+                try:
+                    survivor.kill()
+                except Exception:  # noqa: BLE001 — already terminating; ignore
+                    continue
+    except Exception:  # noqa: BLE001 — best-effort cleanup, must never fail an ingest
+        logger.warning("child_reap_failed", exc_info=True)
+
+
+def _check_ram() -> None:
+    """Ensure enough RAM is free before starting a heavy ingest.
+
+    When RAM is low, first reap any leaked ``multiprocessing`` children (a
+    leaked OCR-worker corpse is the most likely cause — see
+    ``_reap_leaked_children``), then wait up to 30s (re-checking every 3s) for
+    RAM to recover. Only after the full wait without recovery does it raise
+    ``LoaderError`` with the Vietnamese out-of-memory message.
+    """
+    try:
+        import psutil
+        avail_gb = psutil.virtual_memory().available / (1024 ** 3)
+    except Exception:  # noqa: BLE001
+        return  # can't check — proceed optimistically
+
+    if avail_gb >= _MIN_RAM_GB:
+        return
+
+    # RAM is low — a leaked OCR-worker corpse is the most likely cause. Reap
+    # first, then give the OS a chance to reclaim the freed pages.
+    _reap_leaked_children()
+    logger.warning(
+        "ram_low_waiting avail_gb=%.1f need_gb=%.1f", avail_gb, _MIN_RAM_GB
+    )
+    deadline = time.monotonic() + 30.0
+    while time.monotonic() < deadline:
+        time.sleep(3.0)
+        try:
+            avail_gb = psutil.virtual_memory().available / (1024 ** 3)
+        except Exception:  # noqa: BLE001
+            return  # can't re-check — proceed optimistically
+        if avail_gb >= _MIN_RAM_GB:
+            logger.info("ram_recovered avail_gb=%.1f", avail_gb)
+            return
+
+    raise LoaderError(
+        f"Không đủ bộ nhớ để xử lý file (RAM trống: {avail_gb:.1f}GB, "
+        f"cần ≥{_MIN_RAM_GB:.0f}GB). Đóng bớt ứng dụng và thử lại."
+    )
+
+
 def _run_pipeline(
     file_bytes: bytes,
     mime_type: str,
@@ -165,24 +285,55 @@ def _run_pipeline(
     chunker: Chunker,
     embedder: Embedder,
     vector_store: VectorStore,
-) -> int:
-    """Blocking ingest pipeline (load → chunk → embed → upsert). Runs in a worker
-    thread via ``asyncio.to_thread`` so it never blocks the FastAPI event loop —
-    otherwise a slow PDF parse would stall chat. Raises ``LoaderError`` on parse /
-    empty-content failures (mapped to a 422 by the caller)."""
-    documents = load_documents(file_bytes, mime_type, original_name)
-    nodes = chunker.split(documents)
-    if not nodes:
-        raise LoaderError("NO_CONTENT: No chunks produced after splitting.")
+) -> _PipelineResult:
+    """Blocking ingest pipeline (load → chunk → embed → upsert).
 
-    raw_texts = [n.get_content() for n in nodes]
-    texts = prepend_document_context_to_chunks(raw_texts, original_name)
-    vectors = embedder.encode(texts)
+    Serialized by ``_INGEST_LOCK`` — only one document at a time to prevent
+    OOM on RAM-constrained machines.  Runs in a worker thread via
+    ``asyncio.to_thread`` so it never blocks the FastAPI event loop.
 
-    return vector_store.upsert_chunks(
-        document_id=document_id,
-        department_id=department_id,
-        original_name=original_name,
-        chunks=texts,
-        vectors=vectors,
-    )
+    Returns a :class:`_PipelineResult` carrying the chunk count plus the
+    aggregated partial-ingest signal (OR across all returned documents).
+    """
+    with _INGEST_LOCK:
+        _check_ram()
+        logger.info("ingest_pipeline_start doc=%s mime=%s", original_name, mime_type)
+        try:
+            documents = load_documents(file_bytes, mime_type, original_name)
+
+            # Aggregate the partial signal across the returned documents. The
+            # list is ``list[Any]`` — it may hold ``DoclingResult`` objects
+            # (which carry ``.partial``) or plain ``Document`` objects (which
+            # do not), so ``getattr`` with a default keeps this robust to any
+            # future loader path that returns a different node type.
+            partial = any(getattr(d, "partial", False) for d in documents)
+            reasons = [
+                r
+                for r in (getattr(d, "partial_reason", None) for d in documents)
+                if r
+            ]
+            partial_reason = "; ".join(reasons) if reasons else None
+
+            nodes = chunker.split(documents)
+            if not nodes:
+                raise LoaderError("NO_CONTENT: No chunks produced after splitting.")
+
+            raw_texts = [n.get_content() for n in nodes]
+            texts = prepend_document_context_to_chunks(raw_texts, original_name)
+            vectors = embedder.encode(texts)
+
+            chunk_count = vector_store.upsert_chunks(
+                document_id=document_id,
+                department_id=department_id,
+                original_name=original_name,
+                chunks=texts,
+                vectors=vectors,
+            )
+            return _PipelineResult(
+                chunk_count=chunk_count,
+                partial=partial,
+                partial_reason=partial_reason,
+            )
+        finally:
+            _reap_leaked_children()
+            gc.collect()

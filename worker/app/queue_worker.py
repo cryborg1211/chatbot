@@ -153,7 +153,12 @@ async def worker_startup(ctx: dict[str, Any]) -> None:
         s.embed_model, s.qdrant_url, s.collection_name,
     )
 
-    embedder     = Embedder(s.embed_model)
+    embedder     = Embedder(
+        s.embed_model,
+        max_length=s.embed_max_length,
+        embed_batch_size=s.embed_batch_size,
+        torch_threads=s.embed_torch_threads,
+    )
     qdrant       = QdrantClient(url=s.qdrant_url, api_key=(s.qdrant_api_key or None))
     vector_store = VectorStore(
         client=qdrant,

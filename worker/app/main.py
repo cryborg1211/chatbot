@@ -51,7 +51,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
                 settings.embed_model, settings.qdrant_url)
 
     # ---- Embedder (singleton, slow init) ----
-    embedder = Embedder(settings.embed_model)
+    embedder = Embedder(
+        settings.embed_model,
+        max_length=settings.embed_max_length,
+        embed_batch_size=settings.embed_batch_size,
+        torch_threads=settings.embed_torch_threads,
+    )
 
     # ---- Qdrant ----
     qdrant = QdrantClient(
@@ -81,6 +86,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.chunker         = Chunker(
         chunk_size=settings.chunk_size,
         chunk_overlap=settings.chunk_overlap,
+        token_cap=settings.embed_max_length,
     )
     app.state.retriever       = retriever
     app.state.prompt_builder  = prompt_builder

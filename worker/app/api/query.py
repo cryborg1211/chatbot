@@ -78,8 +78,11 @@ async def _stream_events(req: QueryRequest, state) -> AsyncIterator[bytes]:
         return
 
     # ---- 3. Emit sources event ----
+    # Exclude ``text`` (full chunk) from the wire — the .NET gateway/browser only needs the
+    # truncated ``snippet`` for citations. This keeps the SSE payload byte-identical to before
+    # the full-text field was added and avoids shipping ~2.6k-char chunks per hit.
     yield _sse("sources", {
-        "documents": [s.model_dump(mode="json") for s in sources],
+        "documents": [s.model_dump(mode="json", exclude={"text"}) for s in sources],
     })
 
     # ---- 4. Build messages (system prompt + history + current question) ----
@@ -91,7 +94,14 @@ async def _stream_events(req: QueryRequest, state) -> AsyncIterator[bytes]:
     messages.append({"role": "user", "content": req.query})
 
     # ---- 5. Stream LLM tokens (model/temperature may be overridden per request) ----
-    llm = _select_llm(state, req)
+    try:
+        llm = _select_llm(state, req)
+    except Exception as exc:                                        # noqa: BLE001
+        logger.exception("query_llm_select_failed dept=%s", req.department_id)
+        yield _sse("error", {"message": f"LLM selection failed: {exc}"})
+        yield _sse("done",  {"finish_reason": "error", "latency_ms": elapsed_ms()})
+        return
+
     delta_count = 0
     try:
         async for delta in llm.stream_chat(messages):

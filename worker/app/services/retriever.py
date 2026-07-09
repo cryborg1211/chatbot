@@ -26,7 +26,12 @@ class RetrievedSource(BaseModel):
     id:           str                                       # chunk id (Qdrant point id, UUID5)
     document_id:  str                                       # parent document id — used by .NET for citations
     title:        str                                       # original file name
-    snippet:      str                                       # truncated chunk text — fed to the LLM as context
+    # Two views of the same chunk, deliberately kept separate:
+    #   ``text``    = FULL untruncated chunk — fed to the LLM as CONTEXT (the answer may sit
+    #                 anywhere in the chunk, so it must never be truncated for the model).
+    #   ``snippet`` = 500-char truncation — for the browser UI citation display only.
+    text:         str                                       # full chunk text — LLM context
+    snippet:      str                                       # truncated chunk text — UI citation preview
     score:        float = Field(..., description="Cosine similarity 0..1")
 
 
@@ -72,6 +77,7 @@ class Retriever:
                 id=str(point.id),
                 document_id=_payload_str(point.payload, "document_id", ""),
                 title=_payload_str(point.payload, "original_name", "Tài liệu nội bộ"),
+                text=_payload_str(point.payload, "text", ""),
                 snippet=_truncate(_payload_str(point.payload, "text", ""), SNIPPET_MAX_CHARS),
                 score=float(point.score),
             )

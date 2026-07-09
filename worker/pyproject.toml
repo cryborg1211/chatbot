@@ -21,7 +21,9 @@ dependencies = [
     "llama-index-readers-file>=0.2.0",
     "llama-index-vector-stores-qdrant>=0.3.0",
     "llama-index-llms-ollama>=0.3.0",
-    "llama-index-llms-openai>=0.2.0",          # cloud provider (Phase 4); add -anthropic / -gemini when needed
+    "llama-index-llms-openai>=0.2.0",          # cloud provider (Phase 4)
+    "llama-index-llms-anthropic>=0.1.0",       # cloud provider (Phase 4)
+    "llama-index-llms-gemini>=0.1.0",          # cloud provider (Phase 4)
 
     # ---- Prompt templates ----
     "jinja2>=3.1.0",
@@ -29,6 +31,9 @@ dependencies = [
     # ---- Embedding model backend ----
     "sentence-transformers>=3.0.0",
     "torch>=2.2.0",
+    "transformers>=4.40.0",                    # explicit pin: chunker owns a bge-m3 AutoTokenizer
+                                               # for exact token-cap enforcement (transitive via
+                                               # sentence-transformers, pinned here on purpose)
 
     # ---- Vector DB client ----
     "qdrant-client>=1.11.0",
@@ -36,12 +41,21 @@ dependencies = [
     # ---- Document parsers ----
     "docling>=2.0.0",                          # PDF/DOCX → Markdown with table structure
     "easyocr>=1.7.0",                          # Vietnamese OCR for scanned PDFs (Docling OCR engine)
+    "pypdfium2>=4",                            # direct import in loader.py for PDF page-count batching (transitive via docling, pinned on purpose)
 
     # ---- Smart chunking ----
     "langchain-text-splitters>=0.3.0",         # RecursiveCharacterTextSplitter
 
     # ---- Async job queue ----
     "arq>=0.26.0",                             # Redis-backed worker queue
+
+    # ---- System monitoring ----
+    "psutil>=5.9.0",                           # RAM check before heavy OCR
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0.0",                           # worker unit-test fixtures (chunker/loader/ingest)
 ]
 
 [build-system]

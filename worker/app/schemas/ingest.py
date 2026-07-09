@@ -26,6 +26,20 @@ class IngestResponse(BaseModel):
     chunk_count: int = Field(0, ge=0, description="Number of points upserted to Qdrant.")
     elapsed_ms: int = Field(..., ge=0)
 
+    # Partial-ingest signal (success path): some pages/batches were dropped
+    # during parsing (e.g. OCR retry still missing pages). Additive + defaulted
+    # so old .NET clients that don't read these fields keep working.
+    partial: bool = Field(
+        False,
+        description="True when some pages/batches were dropped during parsing "
+                    "(e.g. OCR retry still missing pages).",
+    )
+    partial_reason: str | None = Field(
+        None,
+        description="Human-readable (Vietnamese) summary of what was dropped, "
+                    "when partial is True.",
+    )
+
     # Populated only when status == "failed".
     error_code: str | None = None
     message: str | None = None
