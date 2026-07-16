@@ -81,3 +81,8 @@ wwwroot/uploads/
 # RAG_test holds REAL government sample documents + derived index dumps — never commit
 RAG_test/doc/
 RAG_test/index/
+
+# Native Qdrant binary (replaces the Docker container) + its storage data
+qdrant-native/
+# Native Redis binary (replaces the Docker container) — tporadowski/redis fork
+redis-native/

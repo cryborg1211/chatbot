@@ -65,13 +65,19 @@ class _PipelineResult:
 
     ``partial=True`` when any source ``DoclingResult`` reported dropped pages
     (Fork 3 OCR OR-merge); ``partial_reason`` aggregates the human-readable
-    reasons. Defaults keep the fully-successful path indistinguishable from the
-    old bare-int return semantics.
+    reasons. Defaults keep the fully-successful path indistinguishable from
+    the old bare-int return semantics.
+
+    ``page_routes`` (Phase 0) carries the per-page ingestion manifest for PDFs:
+    one entry per page with ``{page, density, chars, ocr_used, dropped}``. Empty
+    for non-PDF paths. Surfaced to the response so an operator can see exactly
+    which pages are holes instead of a single aggregated string.
     """
 
     chunk_count: int
     partial: bool = False
     partial_reason: str | None = None
+    page_routes: list[dict] = dataclasses.field(default_factory=list)
 
 
 @router.post(
@@ -138,9 +144,14 @@ async def ingest_document(
         )
 
         logger.info(
-            "ingest_ok document_id=%s dept=%s chunks=%d partial=%s elapsed_ms=%d",
+            "ingest_ok document_id=%s dept=%s chunks=%d partial=%s "
+            "pages=%d scanned=%d dropped=%d elapsed_ms=%d",
             document_id, department_id, pipeline_result.chunk_count,
-            pipeline_result.partial, elapsed_ms(),
+            pipeline_result.partial,
+            len(pipeline_result.page_routes),
+            sum(1 for r in pipeline_result.page_routes if r.get("ocr_used")),
+            sum(1 for r in pipeline_result.page_routes if r.get("dropped")),
+            elapsed_ms(),
         )
 
         return JSONResponse(
@@ -152,6 +163,7 @@ async def ingest_document(
                 elapsed_ms=elapsed_ms(),
                 partial=pipeline_result.partial,
                 partial_reason=pipeline_result.partial_reason,
+                page_routes=pipeline_result.page_routes,
             ).model_dump(mode="json"),
         )
 
@@ -314,6 +326,11 @@ def _run_pipeline(
             ]
             partial_reason = "; ".join(reasons) if reasons else None
 
+            # Phase 0: aggregate the per-page manifest across returned docs.
+            page_routes: list[dict] = []
+            for d in documents:
+                page_routes.extend(getattr(d, "page_routes", []) or [])
+
             nodes = chunker.split(documents)
             if not nodes:
                 raise LoaderError("NO_CONTENT: No chunks produced after splitting.")
@@ -333,7 +350,14 @@ def _run_pipeline(
                 chunk_count=chunk_count,
                 partial=partial,
                 partial_reason=partial_reason,
+                page_routes=page_routes,
             )
         finally:
+            # Release cached Docling PDF converters (EasyOCR + TableFormer) —
+            # these are @lru_cache singletons that otherwise stay resident
+            # forever, so a multi-file batch's RAM usage only ever climbs.
+            # See release_pdf_converter_caches() docstring for the full story.
+            from ..services.loader import release_pdf_converter_caches
+            release_pdf_converter_caches()
             _reap_leaked_children()
             gc.collect()

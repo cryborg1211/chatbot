@@ -34,6 +34,10 @@ class DoclingResult:
     ``partial=True`` when some page batches were dropped during parsing, with
     a human-readable (Vietnamese) ``partial_reason`` describing which page
     ranges are missing. Defaults keep every non-PDF path backward-compatible.
+
+    ``page_routes`` carries the Phase 0 per-page ingestion manifest: one entry
+    per PDF page with ``{page, density, chars, ocr_used, dropped}``. Empty for
+    non-PDF paths.
     """
 
     text: str
@@ -41,6 +45,7 @@ class DoclingResult:
     metadata: dict[str, Any]
     partial: bool = False
     partial_reason: str | None = None
+    page_routes: list[dict[str, Any]] = dataclasses.field(default_factory=list)
 
 
 class LoaderError(Exception):
@@ -159,6 +164,10 @@ def _get_available_ram_gb() -> float:
 
 
 _OCR_RAM_THRESHOLD_GB = 4.0  # need at least 4GB free to safely run OCR
+# (reverted 07-2026 — was temporarily lowered to 2.0 for a single-doc test;
+# restored because the real problem turned out to be multi-file RAM
+# accumulation across a batch, which a lower per-doc threshold makes worse,
+# not better. See release_pdf_converter_caches() for the actual fix.)
 _TABLE_RAM_THRESHOLD_GB = 1.5  # need at least 1.5GB free for table structure models
 
 
@@ -232,6 +241,35 @@ def _default_converter() -> Any:
     return DocumentConverter()
 
 
+def release_pdf_converter_caches() -> None:
+    """Drop the cached Docling converters (EasyOCR + TableFormer models).
+
+    The four converter builders above are ``@lru_cache(maxsize=1)`` — once
+    built, they stay resident in this process's memory forever, reused
+    across every subsequent document. That's a real problem for MULTI-FILE
+    uploads: RAM never returns to baseline between documents (only leaked
+    ``multiprocessing`` child processes get reaped — see
+    ``ingest._reap_leaked_children``, a different mechanism that does NOT
+    touch these in-process cached objects). Sequential large PDFs can each
+    push RAM a little higher with nothing giving it back, until a later
+    file in the same batch OOMs even though it would have been fine on its
+    own.
+
+    Call this after each document finishes (see ``ingest._run_pipeline``'s
+    ``finally`` block). Cost: the next PDF that needs OCR pays the EasyOCR/
+    TableFormer model init cost again (a few seconds) instead of reusing a
+    warm converter — a worthwhile trade for not OOM-ing partway through a
+    multi-file batch.
+    """
+    for fn in (
+        _lightweight_pdf_converter,
+        _bare_pdf_converter,
+        _ocr_pdf_converter,
+        _default_converter,
+    ):
+        fn.cache_clear()
+
+
 def _is_near_empty(markdown_text: str, docling_doc: Any) -> bool:
     """True when digital extraction yielded too little text — likely scanned."""
     body = markdown_text.strip()
@@ -259,6 +297,158 @@ def _get_pdf_page_count(file_path: Path) -> int:
         return count
     except Exception:  # noqa: BLE001
         return 0
+
+
+# ---------------------------------------------------------------------
+#  Phase 0 — preemptive per-page text-density probe.
+#  Density is classified from the PDF's NATIVE TEXT LAYER (pypdfium2),
+#  before any Docling parse. This is what routes pages to the right
+#  parser instead of the old reactive whole-doc OCR fallback.
+#
+#  Closes the "silent data loss on hybrid docs" gap: a 50-page govt PDF
+#  with 5 scanned annex pages used to pass the aggregate near-empty
+#  check (loader._is_near_empty measures words/page over the WHOLE doc),
+#  so those 5 pages were never OCR'd.
+# ---------------------------------------------------------------------
+
+# Per-page text-layer density thresholds. Tuned to match the whole-doc
+# heuristics in _assess_pdf_quality, but applied per page.
+_DENSITY_MIN_TEXT_CHARS = 30      # a page with <30 text-layer chars is SCAN
+_DENSITY_MIN_ALPHA_RATIO = 0.35   # symbol-soup / OCR-noise pages are SCAN
+
+
+def _classify_page_density(text: str) -> str:
+    """Classify ONE page's native text layer as ``text``/``scan``.
+
+    ``hybrid`` is a document-level concept (mix of text and scan pages),
+    not a per-page label, so this only returns the two atomic classes.
+
+    Args:
+        text: the page's native (digital) text layer, from pypdfium2.
+              May be empty for a scanned/image-only page.
+
+    Returns:
+        ``"text"`` if the page has a usable digital text layer;
+        ``"scan"`` if the page is image-only or near-empty (needs OCR).
+    """
+    if not text:
+        return "scan"
+    body = text.strip()
+    chars = len(body)
+    if chars < _DENSITY_MIN_TEXT_CHARS:
+        return "scan"
+    # Symbol soup / OCR-noise guard: a page full of glyphs but no letters
+    # (e.g. a scanned page with a corrupt text layer) is still a scan.
+    letters = sum(ch.isalpha() for ch in body)
+    alpha_ratio = letters / chars if chars else 0.0
+    if alpha_ratio < _DENSITY_MIN_ALPHA_RATIO:
+        return "scan"
+    return "text"
+
+
+def _probe_page_density(file_path: Path, total_pages: int) -> list[str]:
+    """Probe the native text layer of every page and classify density.
+
+    Returns a list of length ``total_pages`` where index ``i`` holds the
+    density label (``"text"``/``"scan"``) for page ``i+1``. On any failure
+    to probe a page, that page defaults to ``"text"`` (optimistic) so we
+    don't force OCR on a page we simply couldn't inspect — the secondary
+    ``_is_near_empty`` whole-doc check remains as a safety net.
+
+    Uses pypdfium2 (already a dependency for page counting) to read the
+    text layer cheaply, WITHOUT running the heavy Docling/TableFormer OCR
+    pipeline — this is a routing decision, not a parse.
+    """
+    if total_pages <= 0:
+        return []
+    densities: list[str] = []
+    try:
+        import pypdfium2 as pdfium
+        pdf = pdfium.PdfDocument(str(file_path))
+        try:
+            for page_idx in range(total_pages):
+                try:
+                    page = pdf[page_idx]
+                    textpage = page.get_textpage()
+                    raw = textpage.get_text_range() or ""
+                    textpage.close()
+                    page.close()
+                    densities.append(_classify_page_density(raw))
+                except Exception:  # noqa: BLE001 — per-page failure, default optimistic
+                    densities.append("text")
+        finally:
+            pdf.close()
+    except Exception:  # noqa: BLE001 — whole-probe failure: assume all-text, let near-empty catch it
+        logger.warning("density_probe_failed file=%s — assuming all-text", file_path.name)
+        return ["text"] * total_pages
+    return densities
+
+
+def _group_density_runs(densities: list[str]) -> list[tuple[int, int, str]]:
+    """Compress a per-page density list into contiguous same-class runs.
+
+    ``["text","text","scan","scan","text"]`` →
+    ``[(1,2,"text"), (3,4,"scan"), (5,5,"text")]``.
+
+    Returns runs in page order so the merged markdown preserves document
+    sequence regardless of which converter parses each run.
+    """
+    if not densities:
+        return []
+    runs: list[tuple[int, int, str]] = []
+    run_start = 1
+    run_class = densities[0]
+    for i in range(1, len(densities)):
+        if densities[i] != run_class:
+            runs.append((run_start, i, run_class))
+            run_start = i + 1
+            run_class = densities[i]
+    runs.append((run_start, len(densities), run_class))
+    return runs
+
+
+def _mark_route(
+    page_routes: list[dict[str, Any]],
+    page: int,
+    *,
+    ocr_used: bool | None = None,
+    dropped: bool | None = None,
+    chars: int | None = None,
+) -> None:
+    """Update ONE page manifest entry. Page numbers are 1-based.
+
+    Mutates in place; out-of-range pages are ignored defensively.
+    """
+    idx = page - 1
+    if 0 <= idx < len(page_routes):
+        if ocr_used is not None:
+            page_routes[idx]["ocr_used"] = ocr_used
+        if dropped is not None:
+            page_routes[idx]["dropped"] = dropped
+        if chars is not None:
+            # Treat any non-zero signal as "produced text"; exact count is
+            # distributed separately by _distribute_chars.
+            if chars == 0:
+                page_routes[idx]["chars"] = 0
+
+
+def _distribute_chars(page_routes: list[dict[str, Any]], markdown_text: str) -> None:
+    """Best-effort per-page char attribution.
+
+    Exact per-page attribution would require per-page convert output (Docling
+    merges batches into one markdown string). This evenly splits the merged
+    text across pages that actually produced content, so the manifest carries
+    a non-zero ``chars`` signal for parsed pages and 0 for dropped ones.
+    It's an audit signal, not a precision metric.
+    """
+    if not page_routes or not markdown_text:
+        return
+    produced = [r for r in page_routes if not r["dropped"]]
+    if not produced:
+        return
+    share = max(0, len(markdown_text) // len(produced))
+    for r in produced:
+        r["chars"] = share
 
 
 def _convert_pdf_batched(
@@ -334,6 +524,51 @@ def _convert_pdf_batched(
     return merged, last_doc, failed_batches, failed_ranges
 
 
+def _convert_pdf_page_ranges(
+    tmp_path: Path,
+    converter: Any,
+    page_ranges: list[tuple[int, int]],
+    original_name: str,
+    batch_size: int = _OCR_PAGE_BATCH_SIZE,
+) -> tuple[str, Any, list[tuple[int, int]]]:
+    """Convert ONLY a specific set of page ranges (Phase 0 OCR routing).
+
+    Used to OCR just the scan-classified pages of a hybrid PDF instead of
+    re-running the heavy OCR converter over the whole document. Mirrors
+    ``_convert_pdf_batched``'s error handling but operates on an explicit
+    list of ``(start, end)`` ranges rather than a full sequential sweep.
+
+    Returns ``(merged_markdown, last_docling_doc, failed_ranges)``.
+    """
+    md_parts: list[str] = []
+    last_doc: Any = None
+    failed_ranges: list[tuple[int, int]] = []
+
+    for (start, end) in page_ranges:
+        logger.info(
+            "pdf_range_convert file=%s pages=%d-%d (targeted) ram=%.1fGB",
+            original_name, start, end, _get_available_ram_gb(),
+        )
+        try:
+            result = converter.convert(
+                tmp_path,
+                page_range=(start, end),
+                raises_on_error=False,
+            )
+            batch_md = result.document.export_to_markdown()
+            if batch_md.strip():
+                md_parts.append(batch_md)
+            last_doc = result.document
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "pdf_range_error file=%s pages=%d-%d err=%s — skipping",
+                original_name, start, end, exc,
+            )
+            failed_ranges.append((start, end))
+
+    return "\n\n".join(md_parts), last_doc, failed_ranges
+
+
 def _load_docling(file_bytes: bytes, original_name: str, suffix: str) -> list[Any]:
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
         tmp.write(file_bytes)
@@ -353,68 +588,154 @@ def _load_docling(file_bytes: bytes, original_name: str, suffix: str) -> list[An
                 original_name, total_pages, ram,
             )
 
+            # ---- Phase 0: preemptive per-page density probe ----
+            # Route pages to the right parser BEFORE parsing. A hybrid doc
+            # (text pages + scanned annex pages) is now detected at page
+            # granularity; only scan pages get the expensive OCR pass.
+            densities = _probe_page_density(tmp_path, total_pages)
+            scan_pages = [i + 1 for i, d in enumerate(densities) if d == "scan"]
+            text_pages = [i + 1 for i, d in enumerate(densities) if d == "text"]
+            logger.info(
+                "density_probe file=%s text_pages=%d scan_pages=%d%s",
+                original_name, len(text_pages), len(scan_pages),
+                f" scan={scan_pages[:20]}" if scan_pages else "",
+            )
+
             if ram < _TABLE_RAM_THRESHOLD_GB:
                 logger.warning(
                     "low_ram_bare_converter file=%s ram=%.1fGB — "
                     "disabling table structure to avoid OOM",
                     original_name, ram,
                 )
-                converter = _bare_pdf_converter()
+                digital_converter = _bare_pdf_converter()
             else:
-                converter = _lightweight_pdf_converter()
+                digital_converter = _lightweight_pdf_converter()
 
-            markdown_text, docling_doc, _digital_failed, digital_failed_ranges = (
-                _convert_pdf_batched(
-                    tmp_path, converter, total_pages, original_name,
-                )
-            )
+            # One manifest entry per page, filled in as each range is parsed.
+            page_routes: list[dict[str, Any]] = [
+                {
+                    "page": p,
+                    "density": densities[p - 1],
+                    "chars": 0,
+                    "ocr_used": False,
+                    "dropped": False,
+                }
+                for p in range(1, total_pages + 1)
+            ]
 
-            # Initialised before the OCR branch so the OR-merge below always
-            # has a defined value even when OCR retry never runs.
-            ocr_failed_ranges: list[tuple[int, int]] = []
+            # Ordered conversion: contiguous same-density runs are parsed
+            # together, in page order, so the merged markdown preserves
+            # document order. Text runs use the digital converter; scan
+            # runs use the OCR converter.
+            ordered_runs = _group_density_runs(densities)
+            md_parts: list[str] = []
+            docling_doc: Any = None
+            all_failed_ranges: list[tuple[int, int]] = []
 
-            # If near-empty, the PDF is likely scanned — try OCR fallback
-            if _is_near_empty(markdown_text, docling_doc):
-                ram = _get_available_ram_gb()
-                if ram < _OCR_RAM_THRESHOLD_GB:
-                    logger.warning(
-                        "scanned_pdf_low_ram file=%s ram_gb=%.1f — "
-                        "skipping OCR to avoid OOM crash",
-                        original_name, ram,
-                    )
-                    raise LoaderError(
-                        f"File PDF này là bản scan (hình ảnh), cần OCR để đọc nội dung. "
-                        f"Hiện không đủ bộ nhớ (RAM: {ram:.1f}GB, cần ≥{_OCR_RAM_THRESHOLD_GB:.0f}GB). "
-                        f"Hãy đóng bớt ứng dụng và thử lại, hoặc tải lên bản PDF có text layer."
-                    )
-                else:
+            for run_start, run_end, run_density in ordered_runs:
+                if run_density == "scan":
+                    # OCR needs more RAM than digital parse. If we can't
+                    # afford it, skip THIS range (not the whole doc) and
+                    # mark its pages dropped — unless the entire PDF is a
+                    # scan, in which case there's nothing to return.
+                    ocr_ram = _get_available_ram_gb()
+                    if ocr_ram < _OCR_RAM_THRESHOLD_GB:
+                        if not text_pages:
+                            raise LoaderError(
+                                f"File PDF này là bản scan (hình ảnh), cần OCR để đọc nội dung. "
+                                f"Hiện không đủ bộ nhớ (RAM: {ocr_ram:.1f}GB, "
+                                f"cần ≥{_OCR_RAM_THRESHOLD_GB:.0f}GB). "
+                                f"Hãy đóng bớt ứng dụng và thử lại, hoặc tải lên bản PDF có text layer."
+                            )
+                        logger.warning(
+                            "scan_range_skipped_low_ram file=%s pages=%d-%d "
+                            "ram=%.1fGB — marking pages dropped",
+                            original_name, run_start, run_end, ocr_ram,
+                        )
+                        for p in range(run_start, run_end + 1):
+                            _mark_route(page_routes, p, dropped=True)
+                        all_failed_ranges.append((run_start, run_end))
+                        continue
+
                     logger.info(
-                        "near_empty_digital_pass file=%s — retrying with OCR (ram=%.1fGB)",
-                        original_name, ram,
+                        "ocr_range file=%s pages=%d-%d (scan) ram=%.1fGB",
+                        original_name, run_start, run_end, ocr_ram,
                     )
                     ocr_converter = _ocr_pdf_converter()
-                    markdown_text, docling_doc, _ocr_failed, ocr_failed_ranges = (
-                        _convert_pdf_batched(
-                            tmp_path, ocr_converter, total_pages, original_name,
-                            batch_size=_OCR_PAGE_BATCH_SIZE,
-                        )
+                    run_md, docling_doc, run_failed = _convert_pdf_page_ranges(
+                        tmp_path, ocr_converter,
+                        [(run_start, run_end)], original_name,
+                        batch_size=_OCR_PAGE_BATCH_SIZE,
                     )
+                    for p in range(run_start, run_end + 1):
+                        _mark_route(page_routes, p, ocr_used=True)
+                else:
+                    run_md, last_doc, run_failed = _convert_pdf_page_ranges(
+                        tmp_path, digital_converter,
+                        [(run_start, run_end)], original_name,
+                        batch_size=_PDF_PAGE_BATCH_SIZE,
+                    )
+                    if last_doc is not None:
+                        docling_doc = last_doc
 
-            # OR-merge: any page range dropped in EITHER pass counts as partial.
-            # The digital pass and the OCR-retry pass may drop different batches,
-            # so union both instead of letting the OCR pass overwrite the signal.
-            all_failed_ranges = digital_failed_ranges + ocr_failed_ranges
+                if run_md.strip():
+                    md_parts.append(run_md)
+                    for p in range(run_start, run_end + 1):
+                        _mark_route(page_routes, p, chars=1)  # populated below
+                for fr in run_failed:
+                    all_failed_ranges.append(fr)
+                    for p in range(fr[0], fr[1] + 1):
+                        _mark_route(page_routes, p, dropped=True)
+
+            markdown_text = "\n\n".join(md_parts)
+
+            # Secondary safety net: if the density probe mis-classified a
+            # corrupt-but-textual PDF (probe saw glyphs, Docling got nothing),
+            # fall back to the original whole-doc OCR path. Preserves the
+            # Fork 3 regression-test behaviour.
+            if _is_near_empty(markdown_text, docling_doc) and not md_parts:
+                logger.warning(
+                    "density_probe_missed file=%s — whole-doc near-empty, "
+                    "falling back to full OCR pass", original_name,
+                )
+                net_ram = _get_available_ram_gb()
+                if net_ram < _OCR_RAM_THRESHOLD_GB:
+                    raise LoaderError(
+                        f"File PDF này là bản scan (hình ảnh), cần OCR để đọc nội dung. "
+                        f"Hiện không đủ bộ nhớ (RAM: {net_ram:.1f}GB, "
+                        f"cần ≥{_OCR_RAM_THRESHOLD_GB:.0f}GB). "
+                        f"Hãy đóng bớt ứng dụng và thử lại, hoặc tải lên bản PDF có text layer."
+                    )
+                ocr_converter = _ocr_pdf_converter()
+                markdown_text, docling_doc, _ocr_failed, ocr_failed_ranges = (
+                    _convert_pdf_batched(
+                        tmp_path, ocr_converter, total_pages, original_name,
+                        batch_size=_OCR_PAGE_BATCH_SIZE,
+                    )
+                )
+                all_failed_ranges.extend(ocr_failed_ranges)
+                for p in range(1, total_pages + 1):
+                    _mark_route(page_routes, p, ocr_used=True)
+
+            # Populate approximate char counts per page from the merged text.
+            # Exact per-page attribution requires per-page convert output;
+            # this even split is a best-effort audit signal, not exact.
+            _distribute_chars(page_routes, markdown_text)
+
             partial = bool(all_failed_ranges)
             if partial:
                 partial_reason = (
                     f"Thiếu {len(all_failed_ranges)} nhóm trang: "
                     + ", ".join(f"{s}-{e}" for s, e in all_failed_ranges)
                 )
+            else:
+                partial_reason = None
         else:
             converter = _default_converter()
             result = converter.convert(tmp_path)
             markdown_text = result.document.export_to_markdown()
             docling_doc = result.document
+            page_routes = []
     except MemoryError as exc:
         raise LoaderError(
             "Không đủ bộ nhớ (RAM) để xử lý file. "
@@ -449,6 +770,7 @@ def _load_docling(file_bytes: bytes, original_name: str, suffix: str) -> list[An
             metadata={"source": original_name, "parser": "docling"},
             partial=partial,
             partial_reason=partial_reason,
+            page_routes=page_routes if suffix == ".pdf" else [],
         )
     ]
 

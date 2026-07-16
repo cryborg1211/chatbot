@@ -46,6 +46,18 @@ dependencies = [
     # ---- Smart chunking ----
     "langchain-text-splitters>=0.3.0",         # RecursiveCharacterTextSplitter
 
+    # ---- Vietnamese word segmentation ----
+    "pyvi>=0.1.0",                              # CRF-based compound-word segmenter for BM25 indexing
+
+    # ---- Sparse BM25 encoding (real hybrid search) ----
+    # Qdrant's payload TEXT index is filter-only (MatchText) — it cannot be a
+    # scored branch in query_points/Prefetch. Real server-side BM25 requires a
+    # named SPARSE vector + Modifier.IDF (Qdrant's documented hybrid-search
+    # pattern). fastembed's "Qdrant/bm25" model produces the raw term-frequency
+    # sparse vector; the IDF modifier applies inverse-document-frequency
+    # weighting server-side to complete the BM25 score.
+    "fastembed>=0.4.0",
+
     # ---- Async job queue ----
     "arq>=0.26.0",                             # Redis-backed worker queue
 

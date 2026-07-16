@@ -36,6 +36,15 @@ When processing table data, you MUST strictly adhere to the following rules:
 
 SUPPORTED_PROVIDERS: tuple[str, ...] = ("ollama", "openai", "anthropic", "gemini")
 
+# Ollama's llama-index wrapper defaults context_window=-1, which means "don't
+# override" -> Ollama auto-sizes the KV cache to the MODEL's max training
+# context (e.g. 32768 for qwen2.5:3b), not to what our RAG prompts actually
+# need. On a 4GB-VRAM card that oversized KV cache alone pushes even a 3B
+# model into a 25%/75% CPU/GPU split (confirmed via `ollama ps`) instead of
+# fitting fully on GPU. Real RAG prompts here (ENFORCED_SYSTEM_PROMPT + up to
+# retrieval_top_k chunks + history) run well under this cap in practice.
+DEFAULT_OLLAMA_NUM_CTX = 8192
+
 
 def build_chat_llm(
     provider: str,
@@ -45,6 +54,7 @@ def build_chat_llm(
     base_url: str | None = None,
     timeout: float = 120.0,
     temperature: float = 0.1,
+    num_ctx: int = DEFAULT_OLLAMA_NUM_CTX,
 ):
     """Build a llama-index streaming chat LLM for ``provider``.
 
@@ -61,6 +71,7 @@ def build_chat_llm(
             base_url=base_url or "http://localhost:11434",
             request_timeout=timeout,
             temperature=temperature,
+            context_window=num_ctx,
         )
     if provider == "openai":
         from llama_index.llms.openai import OpenAI
@@ -90,6 +101,7 @@ class LlmRouter:
         api_key: str | None = None,
         timeout: float = 120.0,
         temperature: float = 0.1,
+        num_ctx: int = DEFAULT_OLLAMA_NUM_CTX,
     ):
         self._provider = (provider or "ollama").strip().lower()
         self._model = model
@@ -100,6 +112,7 @@ class LlmRouter:
             base_url=base_url,
             timeout=timeout,
             temperature=temperature,
+            num_ctx=num_ctx,
         )
         logger.info(
             "llm_router_ready provider=%s model=%s temperature=%.2f system_prompt_chars=%d",

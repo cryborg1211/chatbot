@@ -6,8 +6,10 @@ Run with:
 Boot sequence (in lifespan):
     1. Load Settings from env / .env
     2. Instantiate Embedder (downloads bge-m3 on first run → slow!)
-    3. Connect to Qdrant + ensure_collection
-    4. Stash singletons in app.state for route handlers to pull
+    3. Connect to Qdrant + ensure_collection (v3: named dense + named bm25
+       sparse vector w/ IDF modifier — real server-side BM25)
+    4. Instantiate Retriever (hybrid: dense + BM25 RRF), Reranker (lazy), PromptBuilder, LLM
+    5. Stash singletons in app.state for route handlers to pull
 """
 
 from __future__ import annotations
@@ -29,6 +31,7 @@ from .services.chunker import Chunker
 from .services.embedder import Embedder
 from .services.llm_router import LlmRouter
 from .services.prompt_builder import PromptBuilder
+from .services.reranker import Reranker
 from .services.retriever import Retriever
 from .services.vectorstore import VectorStore
 
@@ -47,8 +50,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         level=settings.log_level.upper(),
         format="%(asctime)s %(levelname)s %(name)s | %(message)s",
     )
-    logger.info("worker_starting embed_model=%s qdrant=%s",
-                settings.embed_model, settings.qdrant_url)
+    logger.info("worker_starting embed_model=%s qdrant=%s hybrid_rrf_k=%d",
+                settings.embed_model, settings.qdrant_url, settings.hybrid_rrf_k)
 
     # ---- Embedder (singleton, slow init) ----
     embedder = Embedder(
@@ -58,7 +61,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         torch_threads=settings.embed_torch_threads,
     )
 
-    # ---- Qdrant ----
+    # ---- Qdrant (v3 collection: named dense + named bm25 sparse vector) ----
     qdrant = QdrantClient(
         url=settings.qdrant_url,
         api_key=settings.qdrant_api_key or None,
@@ -70,17 +73,27 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     )
     vector_store.ensure_collection()
 
-    # ---- Phase 3: retriever, prompt builder, LLM ----
-    retriever      = Retriever(client=qdrant, collection=settings.collection_name)
+    # ---- Phase 1: hybrid retriever, reranker (lazy), prompt builder, LLM ----
+    retriever = Retriever(
+        client=qdrant,
+        collection=settings.collection_name,
+        rrf_k=settings.hybrid_rrf_k,
+    )
+    reranker = Reranker(
+        model_name=settings.reranker_model,
+        ram_threshold_gb=settings.reranker_ram_threshold_gb,
+    ) if settings.reranker_enabled else None
     prompt_builder = PromptBuilder()
     llm_router     = LlmRouter(
         base_url=settings.ollama_base_url,
         model=settings.ollama_model,
         timeout=settings.ollama_timeout,
         temperature=settings.ollama_temperature,
+        num_ctx=settings.ollama_num_ctx,
     )
 
     # ---- Stash on app.state ----
+    app.state.settings        = settings
     app.state.embedder        = embedder
     app.state.vector_store    = vector_store
     app.state.chunker         = Chunker(
@@ -89,6 +102,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         token_cap=settings.embed_max_length,
     )
     app.state.retriever       = retriever
+    app.state.reranker        = reranker
     app.state.prompt_builder  = prompt_builder
     app.state.llm             = llm_router
     # Ollama params so a per-request model/temperature override can build a
@@ -97,6 +111,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         "base_url":    settings.ollama_base_url,
         "timeout":     settings.ollama_timeout,
         "temperature": settings.ollama_temperature,
+        "num_ctx":     settings.ollama_num_ctx,
     }
     app.state.default_model   = settings.ollama_model
     app.state.retrieval_top_k = settings.retrieval_top_k
@@ -127,10 +142,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     title="LD3 RAG Worker",
-    version="0.1.0",
+    version="0.2.0",
     description=(
         "AI worker for the LD3 RAG chatbot. Embeds documents into Qdrant and "
-        "(in Phase 3) serves RAG query results. Called only by the .NET gateway."
+        "serves hybrid (dense + BM25 RRF) RAG query results. "
+        "Called only by the .NET gateway."
     ),
     lifespan=lifespan,
 )

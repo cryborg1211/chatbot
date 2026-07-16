@@ -1,12 +1,24 @@
 """Qdrant wrapper for the `ld3_knowledge` collection.
 
-Schema (locked — see master plan §2.7):
-  • Vector size: 1024 (bge-m3 dense)
-  • Distance:    Cosine
-  • Payload:     {document_id, department_id, chunk_index, text, original_name}
-  • Payload index: `department_id` (KEYWORD), `document_id` (KEYWORD)
-  • Point id:    uuid5(NAMESPACE_OID, f"{document_id}:{chunk_index}")
-                 → deterministic so retries overwrite in place (idempotent).
+Schema v3 (Phase 1 — hybrid retrieval, corrected):
+  • Dense vector:  1024 (bge-m3, named vector key ``"dense"``), Cosine
+  • Sparse vector: named ``"bm25"`` (fastembed ``Qdrant/bm25`` term-frequency
+    vectors + ``Modifier.IDF`` — Qdrant's documented BM25 hybrid-search
+    pattern). Replaces the v2 ``text_segmented`` TEXT payload index, which
+    was a design error: Qdrant's payload TEXT index is FILTER-ONLY
+    (``MatchText`` boolean condition) — it cannot be a scored/ranked branch
+    inside ``query_points``/``Prefetch``. There is no "text query" type in
+    Qdrant's Query API. Real server-side BM25 requires a sparse vector.
+  • Payload:       {document_id, department_id, chunk_index, text, original_name}
+    (``text_segmented`` payload field dropped — no longer needed once BM25
+    lives in a sparse vector; ``text`` still holds the raw chunk for the LLM.)
+  • Payload index: ``department_id`` (KEYWORD), ``document_id`` (KEYWORD)
+  • Point id:      uuid5(NAMESPACE_OID, f"{document_id}:{chunk_index}")
+                   → deterministic so retries overwrite in place (idempotent).
+
+Named vectors allow Qdrant 1.10+ to run server-side RRF fusion between the
+dense ``"dense"`` vector and the sparse ``"bm25"`` vector in a single
+``query_points`` call with two prefetches.
 """
 
 from __future__ import annotations
@@ -21,10 +33,15 @@ from qdrant_client.models import (
     Filter,
     FilterSelector,
     MatchValue,
+    Modifier,
     PayloadSchemaType,
     PointStruct,
+    SparseVector,
+    SparseVectorParams,
     VectorParams,
 )
+
+from .sparse_encoder import SPARSE_VECTOR_NAME, SparseVectorResult
 
 logger = logging.getLogger(__name__)
 
@@ -46,23 +63,33 @@ class VectorStore:
             return
 
         logger.info(
-            "creating_collection name=%s dim=%s",
+            "creating_collection_v3 name=%s dim=%s (named dense + sparse bm25/IDF)",
             self._collection, self._vector_size,
         )
         self._client.create_collection(
             collection_name=self._collection,
-            vectors_config=VectorParams(
-                size=self._vector_size,
-                distance=Distance.COSINE,
-            ),
+            vectors_config={
+                "dense": VectorParams(
+                    size=self._vector_size,
+                    distance=Distance.COSINE,
+                ),
+            },
+            sparse_vectors_config={
+                SPARSE_VECTOR_NAME: SparseVectorParams(
+                    modifier=Modifier.IDF,
+                ),
+            },
         )
 
         # Payload indexes — REQUIRED for fast tenant filtering at query time.
-        for field in ("department_id", "document_id"):
+        for field, schema in [
+            ("department_id", PayloadSchemaType.KEYWORD),
+            ("document_id", PayloadSchemaType.KEYWORD),
+        ]:
             self._client.create_payload_index(
                 collection_name=self._collection,
                 field_name=field,
-                field_schema=PayloadSchemaType.KEYWORD,
+                field_schema=schema,
             )
 
     # ------------------------------------------------------------------
@@ -76,7 +103,17 @@ class VectorStore:
         original_name: str,
         chunks: list[str],
         vectors: list[list[float]],
+        *,
+        sparse_vectors: list[SparseVectorResult] | None = None,
     ) -> int:
+        """Upsert chunks into the v3 collection with a real BM25 sparse vector.
+
+        Args:
+            sparse_vectors: Pre-computed BM25 sparse vectors (one per chunk,
+                from ``sparse_encoder.encode()`` over the pyvi-segmented
+                text). If None, computed on the fly (segment + encode) so
+                existing callers that only pass dense vectors keep working.
+        """
         if len(chunks) != len(vectors):
             raise ValueError(
                 f"chunks ({len(chunks)}) and vectors ({len(vectors)}) length mismatch."
@@ -84,20 +121,32 @@ class VectorStore:
         if not chunks:
             return 0
 
-        points = [
-            PointStruct(
-                id=self._point_id(document_id, idx),
-                vector=vec,
-                payload={
-                    "document_id":   document_id,
-                    "department_id": department_id,
-                    "chunk_index":   idx,
-                    "text":          text,
-                    "original_name": original_name,
-                },
+        if sparse_vectors is None:
+            # Lazy import to avoid circular dependency at module level.
+            from .segmenter import segment as do_segment
+            from .sparse_encoder import encode as do_sparse_encode
+            sparse_vectors = do_sparse_encode([do_segment(t) for t in chunks])
+
+        points = []
+        for idx, (text, vec, sv) in enumerate(zip(chunks, vectors, sparse_vectors)):
+            points.append(
+                PointStruct(
+                    id=self._point_id(document_id, idx),
+                    vector={
+                        "dense": vec,
+                        SPARSE_VECTOR_NAME: SparseVector(
+                            indices=sv.indices, values=sv.values,
+                        ),
+                    },
+                    payload={
+                        "document_id":     document_id,
+                        "department_id":   department_id,
+                        "chunk_index":     idx,
+                        "text":            text,           # raw — fed to the LLM
+                        "original_name":   original_name,
+                    },
+                )
             )
-            for idx, (text, vec) in enumerate(zip(chunks, vectors))
-        ]
 
         self._client.upsert(
             collection_name=self._collection,
